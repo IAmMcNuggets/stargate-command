@@ -69,7 +69,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // The preload only uses contextBridge and ipcRenderer, both of which
+      // work in a sandboxed preload, so there is no reason to weaken this.
+      sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
     },
@@ -90,7 +92,9 @@ function createWindow() {
   mainWindow.on('closed', () => (mainWindow = null));
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    // Only ever hand http(s) to the OS. shell.openExternal will happily run
+    // other schemes, and some of those are a known route to code execution.
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());

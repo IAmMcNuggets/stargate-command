@@ -397,11 +397,23 @@ Anything that launches programs on request deserves care.
 from the caller. Nothing can talk either one into running an arbitrary
 executable — the worst case is starting something already in your Start Menu.
 
-**Desktop app.** `contextIsolation` on, `nodeIntegration` off. The renderer
-reaches the machine only through the preload bridge in `electron/preload.js`,
-which exposes six calls and no way to pass a path. Navigation away from the
-gate is blocked and external links are handed to the real browser rather than
-opening in the window.
+**Desktop app.** `contextIsolation` on, `nodeIntegration` off,
+`sandbox` on. The renderer reaches the machine only through the preload bridge
+in `electron/preload.js`, every call of which takes an id or a setting — never
+a path. Navigation away from the gate is blocked, and window-open requests are
+scheme-checked before being handed to the OS, because `shell.openExternal`
+will happily run schemes that are a known route to code execution.
+
+The page runs under a strict **Content-Security-Policy**: `default-src 'none'`
+with `script-src 'self'`, so no inline or remote script can execute. The
+browser-mode token is carried on a `data-` attribute rather than an inline
+`<script>`, which is what makes that possible.
+
+**No network access of any kind.** No telemetry, no auto-update, no outbound
+requests — the only `fetch` in the codebase is browser mode talking to its own
+localhost server. Every `spawn` passes an argv array and none use `shell: true`,
+so there is no shell to inject into. The DOM is built with `textContent` and
+`createElement`; there is no `innerHTML`, `eval` or `new Function` anywhere.
 
 **Browser mode.** Binds to `127.0.0.1` on an ephemeral port. Every API call
 needs a random per-session token in an `X-Gate-Token` header — custom headers

@@ -1,7 +1,9 @@
 'use strict';
 /* STARGATE COMMAND :: dialing computer — console logic */
 
-const TOKEN = window.GATE_TOKEN;
+// Carried on <body> rather than an inline <script>, so the page can run
+// under a strict script-src 'self' policy. Only used in browser mode.
+const TOKEN = document.body.dataset.gateToken || '';
 
 const el = (id) => document.getElementById(id);
 const $search = el('search');

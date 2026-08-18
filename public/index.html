@@ -4,9 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>STARGATE COMMAND</title>
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self';
+  style-src 'self';
+  img-src 'self' data:;
+  font-src 'self';
+  connect-src 'self';
+  base-uri 'none';
+  form-action 'none';
+  frame-ancestors 'none'
+">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-gate-token="__GATE_TOKEN__">
 
 <div id="screen">
   <div class="drag-bar" aria-hidden="true"></div>
@@ -157,7 +168,6 @@
   </form>
 </div>
 
-<script>window.GATE_TOKEN = "__GATE_TOKEN__";</script>
 <script src="glyph-paths.js"></script>
 <script src="glyphs.js"></script>
 <script src="gate.js"></script>
