@@ -1,0 +1,20 @@
+# Keep text normalised in the repo; Git checks out CRLF on Windows.
+* text=auto
+
+*.js    text eol=lf
+*.json  text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+
+# Windows-native scripts must keep CRLF or they misbehave.
+*.ps1   text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.vbs   text eol=crlf
+
+# Binary.
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.mp4   binary

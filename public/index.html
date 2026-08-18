@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STARGATE COMMAND</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="screen">
+  <div class="drag-bar" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- outer frame + title tab, as on the diagnostics display -->
+  <div class="frame" aria-hidden="true">
+    <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+  </div>
+  <div class="title-tab">GATE DIAGNOSTICS<span class="sep">***</span><span id="tab-code">MCK.008762346</span></div>
+
+  <header class="strip-top">
+    <div class="run">
+      <span class="pip"></span>
+      <div>
+        <div class="run-title">RUNNING DIAGNOSTICS<span class="dots">°°</span></div>
+        <div class="run-sub">SUBSYSTEM ANALYSIS ALPHA V.4 &nbsp; VERIFYING ALPHA 2450K</div>
+      </div>
+    </div>
+    <div class="strip-top-right">
+      <div class="macro">MACRO <span id="macro-code">00.3765456C345</span></div>
+      <div class="stat"><label>GATE</label><span id="stat-gate">IDLE</span></div>
+      <div class="stat"><label>ADDR</label><span id="stat-count">----</span></div>
+      <div class="stat"><label>TIME</label><span id="stat-clock">--:--:--</span></div>
+      <div class="win-controls" id="win-controls">
+        <button id="win-min" title="Minimise" aria-label="Minimise">&#8211;</button>
+        <button id="win-max" title="Maximise" aria-label="Maximise">&#9633;</button>
+        <button id="win-close" class="danger" title="Close" aria-label="Close">&#10005;</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============================ LEFT ============================ -->
+    <aside class="col-left">
+      <section class="readout">
+        <div class="kv"><span>INITIALIZED</span><b id="rd-init">00.0389</b></div>
+        <div class="kv"><span>FREQUENCY</span><b id="rd-freq">64.34 KHZ</b></div>
+        <div class="kv"><span>ISOLATE FREQ</span><b>COMPILE</b></div>
+        <div class="kv"><span>CONFIRMED</span><b id="rd-check">CHECK</b></div>
+      </section>
+
+      <h2>CHEVRON ANALYSIS</h2>
+      <ol id="chevron-list" class="chevron-list"></ol>
+
+      <h2>LAST DIALED ADDRESS</h2>
+      <div id="address-strip" class="address-strip"></div>
+      <div class="addr-caption" id="addr-caption">NO TARGET LOCKED</div>
+
+      <h2>SUBSPACE PHASE ADJ<span class="dots">°°</span> <b id="rd-phase">0.5934</b></h2>
+      <div id="log" class="log" role="log" aria-live="polite"></div>
+    </aside>
+
+    <!-- ============================ GATE ============================ -->
+    <section class="stage">
+      <div class="stage-frame">
+        <canvas id="gate"></canvas>
+      </div>
+      <div class="banner-row">
+        <div id="stage-banner" class="stage-banner"></div>
+      </div>
+      <div class="stage-foot">
+        <div class="dest"><label>DESTINATION</label><span id="ro-dest">— NO TARGET LOCKED —</span></div>
+        <div class="bars">
+          <div class="bar"><label>IRIS</label><i data-fill="0.0"></i><span id="ro-iris">OPEN</span></div>
+          <div class="bar"><label>POWER</label><i data-fill="0.82"></i><span>82%</span></div>
+          <div class="bar"><label>BUFFER</label><i data-fill="0.34"></i><span>NOMINAL</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ RIGHT =========================== -->
+    <aside class="col-right">
+      <div class="reg-head">
+        <span class="pip amber"></span>DESTINATION REGISTRY
+        <button id="btn-add" class="reg-toggle" title="Add a destination that isn't in the Start Menu">+ ADD</button>
+        <button id="btn-manage" class="reg-toggle" title="Tick entries to hide them from the registry">MANAGE</button>
+      </div>
+      <div class="search-wrap">
+        <span class="prompt">&gt;</span>
+        <input id="search" type="text" autocomplete="off" spellcheck="false"
+               placeholder="ENTER DESIGNATION" aria-label="Search installed programs">
+      </div>
+      <div id="result-meta" class="result-meta">SCANNING GATE NETWORK…</div>
+      <ul id="results" class="results" role="listbox" aria-label="Destinations"></ul>
+    </aside>
+  </main>
+
+  <!-- code strip + data tables, straight off the reference screen -->
+  <div class="code-strip" id="code-strip" aria-hidden="true"></div>
+
+  <section class="data-tables" aria-hidden="true">
+    <div class="dt-head">MACRO MC.002548S<span class="dots">°°</span></div>
+    <div class="dt-grid" id="dt-grid"></div>
+  </section>
+
+  <footer class="strip-bottom">
+    <div class="keys">
+      <kbd>↑</kbd><kbd>↓</kbd> SELECT
+      <span class="sep">·</span><kbd>⏎</kbd> DIAL
+      <span class="sep">·</span><kbd>Shift</kbd>+<kbd>⏎</kbd> SHOW SPEED
+      <span class="sep">·</span><kbd>Esc</kbd> ABORT / CLEAR
+      <span class="sep">·</span><kbd>F5</kbd> RESCAN
+      <span class="sep">·</span><kbd>I</kbd> IRIS
+      <span class="sep">·</span><kbd>M</kbd> AUDIO
+    </div>
+    <div class="foot-right">
+      <button id="btn-hotkey" class="ghost-btn" title="Click, then press the key combination to summon the gate">HOTKEY: —</button>
+      <button id="btn-iris" class="ghost-btn" title="Open or close the iris (I)">IRIS: OPEN</button>
+      <button id="btn-speed" class="ghost-btn" title="Dial speed">SPEED: NORMAL</button>
+      <button id="btn-audio" class="ghost-btn" title="Toggle audio">AUDIO: ON</button>
+      <button id="btn-rescan" class="ghost-btn" title="Rescan installed programs">RESCAN</button>
+      <button id="btn-quit" class="ghost-btn danger" title="Shut down">SHUT DOWN</button>
+    </div>
+  </footer>
+</div>
+
+<div id="add-overlay" class="overlay" hidden>
+  <form id="add-form" class="add-panel">
+    <div class="add-head"><span class="pip amber"></span>NEW DESTINATION</div>
+
+    <label class="fld">
+      <span>DESIGNATION</span>
+      <input id="add-name" type="text" autocomplete="off" spellcheck="false" placeholder="NAME IN THE REGISTRY">
+    </label>
+
+    <label class="fld">
+      <span>TARGET</span>
+      <span class="fld-row">
+        <input id="add-target" type="text" autocomplete="off" spellcheck="false"
+               placeholder="PROGRAM, FILE, FOLDER OR https://...">
+        <button type="button" id="add-browse" class="ghost-btn">BROWSE...</button>
+      </span>
+    </label>
+
+    <label class="fld">
+      <span>ARGUMENTS <i>optional</i></span>
+      <input id="add-args" type="text" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div id="add-err" class="add-err"></div>
+
+    <div class="add-actions">
+      <button type="button" id="add-cancel" class="ghost-btn">CANCEL</button>
+      <button type="submit" id="add-save" class="ghost-btn primary">ADD DESTINATION</button>
+    </div>
+  </form>
+</div>
+
+<script>window.GATE_TOKEN = "__GATE_TOKEN__";</script>
+<script src="glyph-paths.js"></script>
+<script src="glyphs.js"></script>
+<script src="gate.js"></script>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

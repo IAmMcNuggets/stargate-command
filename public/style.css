@@ -1,0 +1,752 @@
+/*
+ * STARGATE COMMAND :: gate diagnostics
+ *
+ * Styled after the SGC diagnostics display: deep navy ground, cyan structure
+ * and type, green reserved for gate symbols, amber for a few status pips only.
+ */
+
+:root {
+  --bg:          #030d16;
+  --bg-deep:     #010609;
+  --bg-panel:    rgba(6, 26, 44, 0.5);
+  --bg-raised:   rgba(16, 58, 92, 0.5);
+
+  --cyan:        #4fc3f7;
+  --cyan-hot:    #cdeeff;
+  --cyan-dim:    #4e86ad;
+  --cyan-faint:  rgba(79, 195, 247, 0.15);
+  --cyan-line:   rgba(79, 195, 247, 0.32);
+
+  --green:       #00e676;
+  --green-hot:   #7dffb2;
+  --amber:       #ffb300;
+  --lock:        #ff7a29;
+  --horizon:     #3fb9ff;
+  --danger:      #ff5252;
+
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+
+/*
+ * UI scale.
+ *
+ * Every size below is authored for a ~1360px window. On a large monitor that
+ * leaves the panel text too small to read comfortably, so font sizes and the
+ * fixed column widths are multiplied by --ui. Stepped via media queries
+ * because CSS cannot derive a unitless multiplier from vw. The gate itself is
+ * unaffected — it already sizes from its container.
+ */
+:root { --ui: 1; }
+@media (min-width: 1500px) { :root { --ui: 1.08; } }
+@media (min-width: 1750px) { :root { --ui: 1.16; } }
+@media (min-width: 2000px) { :root { --ui: 1.24; } }
+@media (min-width: 2300px) { :root { --ui: 1.32; } }
+@media (min-width: 2700px) { :root { --ui: 1.40; } }
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-deep);
+  color: var(--cyan);
+  font-family: var(--mono);
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+#screen {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: 6px;
+  padding: 26px 16px 8px;
+  background:
+    radial-gradient(ellipse at 38% 45%, rgba(33, 150, 243, .10), transparent 62%),
+    repeating-linear-gradient(0deg,  rgba(79,195,247,.028) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(79,195,247,.028) 0 1px, transparent 1px 44px),
+    var(--bg);
+}
+
+.scanlines, .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
+.scanlines {
+  background: repeating-linear-gradient(180deg, rgba(0,0,0,.30) 0 1px, rgba(0,0,0,0) 1px 3px);
+  mix-blend-mode: multiply;
+  opacity: .5;
+}
+.vignette { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.82) 100%); }
+
+/* ------------------------------------------------- frame + title tab */
+
+.frame {
+  position: absolute;
+  inset: 8px 8px 4px;
+  border: 1px solid var(--cyan-line);
+  pointer-events: none;
+  z-index: 5;
+}
+.frame .c {
+  position: absolute;
+  width: 20px; height: 20px;
+  border: 2px solid var(--cyan);
+}
+.frame .tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.frame .tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.frame .bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+.frame .br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.title-tab {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 3px 26px 4px;
+  font-size: calc(10px * var(--ui));
+  letter-spacing: .3em;
+  color: var(--cyan-hot);
+  background: var(--bg);
+  border: 1px solid var(--cyan-line);
+  border-top: 0;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%);
+}
+.title-tab .sep { color: var(--cyan-dim); margin: 0 6px; }
+.dots { color: var(--cyan-dim); }
+
+/* --------------------------------------------------------- top strip */
+
+.strip-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 10px 0;
+  position: relative;
+  z-index: 20;
+}
+.run { display: flex; gap: 9px; align-items: flex-start; }
+.pip {
+  width: 8px; height: 8px;
+  margin-top: 3px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  flex: 0 0 auto;
+}
+.pip.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.run-title { font-size: calc(12px * var(--ui)); letter-spacing: .22em; color: var(--cyan-hot); }
+.run-sub { font-size: calc(9px * var(--ui)); letter-spacing: .18em; color: var(--cyan-dim); margin-top: 3px; }
+
+.strip-top-right { display: flex; align-items: center; gap: 18px; }
+.macro { font-size: calc(9px * var(--ui)); letter-spacing: .16em; color: var(--cyan-dim); }
+.stat { text-align: right; line-height: 1.2; }
+.stat label { display: block; font-size: calc(8px * var(--ui)); letter-spacing: .2em; color: var(--cyan-dim); }
+.stat span { font-size: calc(12px * var(--ui)); letter-spacing: .1em; color: var(--cyan-hot); }
+.stat span.hot  { color: var(--lock);    text-shadow: 0 0 10px var(--lock); }
+.stat span.open { color: var(--horizon); text-shadow: 0 0 10px var(--horizon); }
+
+/* ------------------------------------------------------------ layout */
+
+main {
+  display: grid;
+  grid-template-columns: calc(232px * var(--ui)) minmax(320px, 1fr) calc(300px * var(--ui));
+  gap: 10px;
+  padding: 0 10px;
+  min-height: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.col-left, .col-right {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(5px * var(--ui));
+  padding: calc(8px * var(--ui)) calc(9px * var(--ui));
+  border: 1px solid var(--cyan-faint);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+h2 {
+  margin: 5px 0 2px;
+  font-size: calc(8.5px * var(--ui));
+  font-weight: 600;
+  letter-spacing: .24em;
+  color: var(--cyan-dim);
+  border-bottom: 1px solid var(--cyan-faint);
+  padding-bottom: 3px;
+}
+h2:first-of-type { margin-top: 0; }
+h2 b { color: var(--cyan-hot); font-weight: 600; }
+
+/* ------------------------------------------------------ left readout */
+
+.readout { display: grid; gap: 2px; }
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: calc(9px * var(--ui));
+  letter-spacing: .12em;
+  color: var(--cyan-dim);
+}
+.kv b { color: var(--cyan-hot); font-weight: 400; }
+
+/* ---------------------------------------------------------- chevrons */
+
+.chevron-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.chevron-list li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  font-size: calc(9.5px * var(--ui));
+  letter-spacing: .06em;
+  color: var(--cyan-dim);
+  padding: 1px 3px;
+  border-left: 2px solid transparent;
+  transition: color .12s, background .12s;
+}
+.chevron-list li .mark {
+  width: 0; height: 0;
+  justify-self: center;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 7px solid rgba(78, 134, 173, .45);
+}
+.chevron-list li .state { font-size: calc(8px * var(--ui)); letter-spacing: .12em; }
+.chevron-list li.encoded {
+  color: var(--cyan-hot);
+  background: rgba(255, 122, 41, .10);
+  border-left-color: var(--lock);
+}
+.chevron-list li.encoded .mark { border-top-color: var(--lock); filter: drop-shadow(0 0 4px var(--lock)); }
+.chevron-list li.locked {
+  color: #fff;
+  background: rgba(255, 122, 41, .2);
+  border-left-color: var(--amber);
+}
+.chevron-list li.locked .mark { border-top-color: var(--amber); filter: drop-shadow(0 0 7px var(--lock)); }
+.chevron-list li.active { animation: chevPulse .5s ease-out; }
+@keyframes chevPulse { from { background: rgba(205, 238, 255, .45); } to { background: rgba(255, 122, 41, .2); } }
+
+/* ---------------------------------------------------- address strip */
+
+.address-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.address-strip .cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--cyan-faint);
+  background: rgba(2, 12, 22, .7);
+  display: grid;
+  place-items: center;
+  opacity: .4;
+  transition: opacity .2s, box-shadow .2s, border-color .2s;
+}
+.address-strip .cell.on {
+  opacity: 1;
+  border-color: var(--green);
+  box-shadow: 0 0 9px rgba(0, 230, 118, .45), inset 0 0 7px rgba(0, 230, 118, .16);
+}
+.address-strip .cell canvas { width: 100%; height: 100%; display: block; }
+.addr-caption {
+  font-size: calc(8px * var(--ui));
+  letter-spacing: .16em;
+  color: var(--cyan-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------- log */
+
+.log {
+  flex: 1;
+  min-height: 48px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+  font-size: calc(8.5px * var(--ui));
+  line-height: 1.45;
+  color: var(--cyan-dim);
+}
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .t   { opacity: .5; }
+.log .hi  { color: var(--cyan-hot); }
+.log .lock{ color: var(--lock); }
+.log .ok  { color: var(--green-hot); }
+.log .err { color: var(--danger); }
+
+/* ------------------------------------------------------------- stage */
+
+.stage { display: flex; flex-direction: column; gap: 7px; min-height: 0; min-width: 0; }
+.stage-frame { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; }
+/* Absolutely positioned so the canvas can never size its own container.
+   As an in-flow grid item its width/height ATTRIBUTES act as an intrinsic
+   size, which fed the auto row, which made height:100% resolve to auto,
+   which fed the attributes again — the canvas grew on every resize. */
+#gate { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* The banner used to float over the bottom of the gate, which meant it sat
+   across chevrons 8 and 9 — and once the gate shifted left to make room for
+   the destination boxes it was no longer centred on anything. It now has its
+   own reserved strip below the gate, so it covers nothing and the space is
+   held whether or not a message is showing. */
+.banner-row {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.stage-banner {
+  transform: translateX(var(--gate-offset, 0px));
+  padding: 4px 16px;
+  font-size: calc(11px * var(--ui));
+  letter-spacing: .28em;
+  white-space: nowrap;
+  color: var(--cyan-hot);
+  border: 1px solid var(--cyan-line);
+  background: rgba(3, 13, 22, .88);
+  opacity: 0;
+  transition: opacity .18s;
+  pointer-events: none;
+}
+.stage-banner.show { opacity: 1; }
+.stage-banner.lock { color: var(--lock);    border-color: var(--lock);    text-shadow: 0 0 12px var(--lock); }
+.stage-banner.open { color: var(--horizon); border-color: var(--horizon); text-shadow: 0 0 14px var(--horizon); }
+.stage-banner.err  { color: var(--danger);  border-color: var(--danger); }
+
+.stage-foot { border: 1px solid var(--cyan-faint); background: var(--bg-panel); padding: 6px 10px; }
+.dest {
+  display: flex; gap: 10px; align-items: baseline;
+  border-bottom: 1px solid var(--cyan-faint);
+  padding-bottom: 5px; margin-bottom: 5px;
+}
+.dest label { font-size: calc(8px * var(--ui)); letter-spacing: .22em; color: var(--cyan-dim); flex: 0 0 auto; }
+.dest span {
+  font-size: calc(13px * var(--ui)); letter-spacing: .14em; color: var(--cyan-hot);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; }
+.bar label { font-size: calc(8px * var(--ui)); letter-spacing: .18em; color: var(--cyan-dim); }
+.bar i {
+  height: 5px;
+  border: 1px solid var(--cyan-faint);
+  background:
+    linear-gradient(90deg, var(--cyan) 0 var(--f, 0%), transparent var(--f, 0%)),
+    repeating-linear-gradient(90deg, rgba(79,195,247,.16) 0 2px, transparent 2px 5px);
+}
+.bar span { font-size: calc(8px * var(--ui)); letter-spacing: .1em; color: var(--cyan-dim); }
+
+/* ------------------------------------------------ registry (buttons) */
+
+.reg-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: calc(9px * var(--ui)); letter-spacing: .22em; color: var(--cyan-hot);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--cyan-faint);
+}
+
+.search-wrap {
+  display: flex; align-items: center; gap: 7px;
+  border: 1px solid var(--cyan-line);
+  background: rgba(2, 14, 26, .7);
+  padding: 6px 9px;
+  box-shadow: inset 0 0 12px rgba(79, 195, 247, .09);
+}
+.search-wrap .prompt { color: var(--green); font-size: calc(13px * var(--ui)); }
+#search {
+  flex: 1; min-width: 0;
+  background: transparent; border: 0; outline: 0;
+  color: var(--cyan-hot);
+  font-family: var(--mono);
+  font-size: calc(13px * var(--ui)); letter-spacing: .14em; text-transform: uppercase;
+  caret-color: var(--green);
+  user-select: text;
+}
+#search::placeholder { color: rgba(78, 134, 173, .6); letter-spacing: .14em; }
+
+.result-meta { font-size: calc(8px * var(--ui)); letter-spacing: .18em; color: var(--cyan-dim); padding: 1px 1px 0; }
+
+.results {
+  list-style: none; margin: 0; padding: 0 3px 0 0;
+  flex: 1; min-height: 0; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--cyan-dim) transparent;
+  /* Flex column rather than grid: grid auto-rows get compressed once the
+     list overflows a definite-height container, which squashed rows into
+     each other. Flex items with flex:0 0 auto always keep their height. */
+  display: flex; flex-direction: column; gap: 3px;
+}
+.results::-webkit-scrollbar { width: 5px; }
+.results::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+
+/* Each destination is a console button, like the stacked codes on the right
+   of the reference display. */
+.results li {
+  flex: 0 0 auto;
+  display: grid;
+  /* Column count must match the number of children, or the last one wraps to
+     a second row and the row doubles in height. */
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: calc(5px * var(--ui)) calc(9px * var(--ui));
+  font-size: calc(10.5px * var(--ui));
+  letter-spacing: .07em;
+  color: var(--cyan);
+  background: var(--bg-raised);
+  border: 1px solid var(--cyan-faint);
+  border-left: 2px solid var(--cyan-line);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background .1s, border-color .1s, color .1s;
+}
+.results li .nm { overflow: hidden; text-overflow: ellipsis; }
+.results li .tag { font-size: calc(7.5px * var(--ui)); letter-spacing: .14em; color: var(--cyan-dim); }
+.results li mark { background: transparent; color: var(--green-hot); text-shadow: 0 0 7px rgba(0,230,118,.6); }
+.results li:hover { background: rgba(33, 110, 170, .45); border-color: var(--cyan-line); }
+.results li.sel {
+  background: rgba(41, 182, 246, .3);
+  border-color: var(--cyan);
+  border-left-color: var(--amber);
+  color: #fff;
+}
+.results li.sel .tag { color: var(--amber); }
+
+.results-empty { padding: 12px 6px; font-size: calc(9px * var(--ui)); letter-spacing: .14em; color: var(--cyan-dim); opacity: .75; }
+
+/* ------------------------------------------- code strip + data tables */
+
+.code-strip {
+  display: flex; gap: 3px; padding: 0 10px;
+  position: relative; z-index: 20;
+  overflow: hidden;
+}
+.code-strip span {
+  flex: 1 1 0; min-width: 0;
+  text-align: center;
+  font-size: calc(8px * var(--ui)); letter-spacing: .12em;
+  color: var(--cyan-dim);
+  background: var(--bg-raised);
+  border: 1px solid var(--cyan-faint);
+  padding: 2px 0;
+}
+
+.data-tables {
+  padding: 0 10px;
+  position: relative; z-index: 20;
+  border-top: 1px solid var(--cyan-faint);
+  padding-top: 4px;
+  margin: 0 10px;
+}
+.dt-head { font-size: calc(8px * var(--ui)); letter-spacing: .2em; color: var(--amber); margin-bottom: 3px; }
+.dt-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+.dt-col { min-width: 0; }
+.dt-col h3 {
+  margin: 0 0 2px;
+  font-size: calc(7.5px * var(--ui)); font-weight: 400; letter-spacing: .16em;
+  color: var(--cyan-dim);
+}
+.dt-col div {
+  font-size: calc(8px * var(--ui)); letter-spacing: .06em; color: var(--cyan);
+  opacity: .75; white-space: nowrap; overflow: hidden;
+}
+
+/* ------------------------------------------------------ bottom strip */
+
+.strip-bottom {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 4px 10px 2px;
+  font-size: calc(8px * var(--ui)); letter-spacing: .16em; color: var(--cyan-dim);
+  position: relative; z-index: 20;
+}
+.keys { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.keys .sep { opacity: .4; margin: 0 2px; }
+kbd {
+  display: inline-block; padding: 1px 4px;
+  border: 1px solid var(--cyan-faint);
+  background: rgba(79, 195, 247, .07);
+  color: var(--cyan);
+  font-family: var(--mono); font-size: calc(8px * var(--ui));
+}
+.foot-right { display: flex; gap: 6px; flex: 0 0 auto; }
+
+.ghost-btn {
+  font-family: var(--mono);
+  font-size: calc(8px * var(--ui)); letter-spacing: .16em;
+  padding: calc(4px * var(--ui)) calc(9px * var(--ui));
+  color: var(--cyan);
+  background: var(--bg-raised);
+  border: 1px solid var(--cyan-faint);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.ghost-btn:hover { background: rgba(41, 182, 246, .3); color: #fff; border-color: var(--cyan); }
+.ghost-btn.danger { color: var(--danger); border-color: rgba(255, 82, 82, .3); }
+.ghost-btn.danger:hover { background: rgba(255, 82, 82, .25); color: #fff; border-color: var(--danger); }
+
+/* ------------------------------------------- frameless window chrome */
+
+.win-controls { display: none; }
+body.desktop .win-controls { display: flex; gap: 3px; margin-left: 4px; }
+.win-controls button {
+  width: calc(28px * var(--ui)); height: calc(20px * var(--ui));
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: calc(10px * var(--ui)); line-height: 1;
+  color: var(--cyan-dim);
+  background: transparent;
+  border: 1px solid var(--cyan-faint);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.win-controls button:hover { background: rgba(41, 182, 246, .25); color: var(--cyan-hot); border-color: var(--cyan); }
+.win-controls button.danger:hover { background: rgba(255, 82, 82, .3); color: #fff; border-color: var(--danger); }
+
+/* Window dragging.
+   .scanlines and .vignette span the whole window at z-index 60. Electron
+   decides drag regions by paint order and ignores pointer-events, so those
+   overlays (default: no-drag) cancelled any drag region beneath them — which
+   is why the header looked draggable but wasn't. This strip sits above them.
+   The status cluster is lifted higher still so its buttons stay clickable. */
+.drag-bar { display: none; }
+body.desktop .drag-bar {
+  display: block;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 58px;
+  z-index: 70;
+  -webkit-app-region: drag;
+}
+/* The header must clear the overlays itself. It sets position:relative +
+   z-index:20, which forms a stacking context, so nothing inside it can ever
+   paint above a z-70 sibling — raising a child's z-index does nothing. */
+body.desktop .strip-top {
+  z-index: 80;
+  -webkit-app-region: drag;
+}
+body.desktop .strip-top-right,
+body.desktop .strip-top button,
+body.desktop .win-controls { -webkit-app-region: no-drag; }
+body.desktop .title-tab { -webkit-app-region: drag; }
+
+/* dialing lockout */
+body.dialing .results li,
+body.dialing .ghost-btn:not(.danger) { pointer-events: none; opacity: .45; }
+body.dialing #search { opacity: .45; }
+
+/* ------------------------------------------------------------ narrow */
+
+@media (max-width: 1180px) {
+  main { grid-template-columns: 200px 1fr 250px; }
+  .dt-grid { grid-template-columns: repeat(4, 1fr); }
+  .run-sub, .macro { display: none; }
+}
+/* The footer gained the hotkey control, so the key hints run out of room
+   sooner than the buttons do. Drop the hints first rather than let the strip
+   wrap onto a second line. */
+@media (max-width: 1330px) {
+  .keys { display: none; }
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr 260px; }
+  .col-left, .data-tables, .code-strip { display: none; }
+}
+
+/* Iris engaged: an armed safety control, so it reads amber like the other
+   status indicators rather than as a normal button. */
+.ghost-btn.engaged {
+  color: var(--amber);
+  border-color: rgba(255, 179, 0, .55);
+  background: rgba(255, 179, 0, .14);
+}
+.ghost-btn.engaged:hover {
+  background: rgba(255, 179, 0, .3);
+  color: #fff;
+  border-color: var(--amber);
+}
+
+/* ------------------------------------------------- hidden entries + hotkey */
+
+.reg-head { position: relative; }
+.reg-toggle {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: calc(7.5px * var(--ui));
+  letter-spacing: .14em;
+  padding: calc(2px * var(--ui)) calc(6px * var(--ui));
+  color: var(--cyan-dim);
+  background: transparent;
+  border: 1px solid var(--cyan-faint);
+  cursor: pointer;
+}
+.reg-toggle:hover { color: var(--cyan-hot); border-color: var(--cyan); }
+.reg-toggle.on { color: var(--amber); border-color: rgba(255,179,0,.55); background: rgba(255,179,0,.12); }
+
+/*
+ * Registry management.
+ *
+ * There is no hide control on a normal row at all — nothing to mis-click when
+ * you are just launching things. Ticking only exists inside MANAGE mode.
+ */
+/* Program icons. Rendered at a fixed box so rows never reflow when icons
+   arrive from the background extraction a second or two after the list. */
+.row-icon {
+  width: calc(16px * var(--ui));
+  height: calc(16px * var(--ui));
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.row-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* No extractable icon — show a miniature gate rather than a gap. */
+.row-icon.fallback {
+  position: relative;
+  border: 1px solid var(--cyan-line);
+  border-radius: 50%;
+  opacity: .65;
+}
+.row-icon.fallback::before {
+  content: "";
+  position: absolute;
+  top: calc(-1px * var(--ui));
+  left: 50%;
+  width: calc(4px * var(--ui));
+  height: calc(4px * var(--ui));
+  transform: translateX(-50%);
+  background: var(--lock);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+
+.tickbox {
+  width: calc(11px * var(--ui));
+  height: calc(11px * var(--ui));
+  display: grid;
+  place-items: center;
+  font-size: calc(8px * var(--ui));
+  line-height: 1;
+  color: var(--bg-deep);
+  border: 1px solid var(--cyan-line);
+  background: rgba(2, 14, 26, .8);
+}
+.tickbox.on { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.results.manage li { grid-template-columns: auto auto 1fr auto; cursor: pointer; }
+.results.manage li.is-custom { grid-template-columns: auto auto 1fr auto auto; }
+.results.manage li:hover { background: rgba(255, 82, 82, .16); border-color: rgba(255, 82, 82, .5); }
+
+.results li.is-hidden { opacity: .5; border-left-color: var(--cyan-faint); }
+.results li.is-hidden .nm { text-decoration: line-through; }
+
+/* Dialling is off while managing, so the gate controls read as inactive. */
+body.managing .stage-foot,
+body.managing .col-left { opacity: .6; }
+
+.ghost-btn.capturing {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(255,179,0,.2);
+}
+
+/* ------------------------------------------------------ add destination */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(1, 6, 9, .78);
+}
+.overlay[hidden] { display: none; }
+
+.add-panel {
+  width: min(calc(430px * var(--ui)), 88%);
+  display: flex;
+  flex-direction: column;
+  gap: calc(9px * var(--ui));
+  padding: calc(16px * var(--ui));
+  border: 1px solid var(--cyan-line);
+  background: #05141f;
+  box-shadow: 0 0 40px rgba(0, 0, 0, .7), inset 0 0 30px rgba(79, 195, 247, .06);
+}
+.add-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(10px * var(--ui));
+  letter-spacing: .24em;
+  color: var(--cyan-hot);
+  padding-bottom: calc(6px * var(--ui));
+  border-bottom: 1px solid var(--cyan-faint);
+}
+
+.fld { display: flex; flex-direction: column; gap: calc(3px * var(--ui)); }
+.fld > span {
+  font-size: calc(8px * var(--ui));
+  letter-spacing: .2em;
+  color: var(--cyan-dim);
+}
+.fld > span i { font-style: normal; opacity: .6; letter-spacing: .1em; }
+.fld-row { display: flex; gap: calc(6px * var(--ui)); }
+.fld-row input { flex: 1; min-width: 0; }
+
+.add-panel input {
+  font-family: var(--mono);
+  font-size: calc(11px * var(--ui));
+  letter-spacing: .08em;
+  padding: calc(6px * var(--ui)) calc(8px * var(--ui));
+  color: var(--cyan-hot);
+  background: rgba(2, 14, 26, .8);
+  border: 1px solid var(--cyan-line);
+  outline: 0;
+  user-select: text;
+}
+.add-panel input:focus { border-color: var(--cyan); box-shadow: inset 0 0 12px rgba(79, 195, 247, .12); }
+.add-panel input::placeholder { color: rgba(78, 134, 173, .55); }
+
+.add-err {
+  min-height: calc(12px * var(--ui));
+  font-size: calc(8.5px * var(--ui));
+  letter-spacing: .12em;
+  color: var(--danger);
+}
+.add-actions { display: flex; justify-content: flex-end; gap: calc(6px * var(--ui)); }
+.ghost-btn.primary {
+  color: var(--green-hot);
+  border-color: rgba(0, 230, 118, .5);
+  background: rgba(0, 230, 118, .14);
+}
+.ghost-btn.primary:hover { background: rgba(0, 230, 118, .3); color: #fff; border-color: var(--green); }
+
+/* Hand-added entries are marked, and can be deleted outright while managing
+   (hiding a custom entry would leave it lingering in settings forever). */
+.results li.is-custom .nm::after {
+  content: "CUSTOM";
+  margin-left: calc(7px * var(--ui));
+  font-size: calc(7px * var(--ui));
+  letter-spacing: .16em;
+  color: var(--amber);
+  opacity: .8;
+}
+.row-del {
+  font-family: var(--mono);
+  font-size: calc(9px * var(--ui));
+  line-height: 1;
+  padding: calc(2px * var(--ui)) calc(5px * var(--ui));
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid rgba(255, 82, 82, .4);
+  cursor: pointer;
+}
+.row-del:hover { background: rgba(255, 82, 82, .3); color: #fff; }
