@@ -11,7 +11,8 @@
     "serve": "node server.js",
     "dist": "electron-builder --win --publish never",
     "pack": "electron-builder --win --dir --publish never",
-    "trace-glyphs": "node tools/trace-glyphs.js assets/glyphs.png --region 228,196,772,812 --circle 623,623,535 --cols 6 --rows 7 --preview"
+    "trace-glyphs": "node tools/trace-glyphs.js assets/glyphs.png --region 228,196,772,812 --circle 623,623,535 --cols 6 --rows 7 --preview",
+    "release": "node tools/make-release.js"
   },
   "build": {
     "appId": "com.davidweisberg.stargatecommand",
