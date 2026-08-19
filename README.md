@@ -87,4 +87,4 @@ the Windows gotchas that cost real time.
 
 Stargate, the SGC and the gate designs belong to MGM. This is an unofficial fan
 project, made for fun, not affiliated with or endorsed by the rights holders.
-The code is free for you to use and modify.
+The code is MIT licensed, so do what you like with it.
