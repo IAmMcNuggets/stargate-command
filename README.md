@@ -16,7 +16,7 @@ Windows 10 or 11, 64-bit. Nothing else to install.
 
 It is not code-signed, so Windows will show a blue "Windows protected your PC"
 box. Click **More info**, then **Run anyway**. A signing certificate costs a few
-hundred pounds a year and this is a hobby project. If you would rather not
+hundred dollars a year and this is a hobby project. If you would rather not
 trust a stranger's binary, the source is right here and builds in two commands.
 
 ## Using it
@@ -47,7 +47,7 @@ drawn by hand, so the symbols on the ring are the actual constellations.
 
 **The chevrons light in the right order.** They are not evenly spaced: 1, 2, 3
 down the right, 4, 5, 6 back up the left, 7 at the top. Each symbol spins to
-top dead centre to be grabbed, exactly as on screen.
+top dead center to be grabbed, exactly as on screen.
 
 **The iris works.** It is a real leaf shutter, 22 blades, and the spiral falls
 out of the geometry rather than being drawn on.
@@ -83,7 +83,7 @@ nothing phoning home. You can verify that with a firewall, or by reading
 traced, why the iris is drawn the way it is, how Store apps are launched, and
 the Windows gotchas that cost real time.
 
-## Licence and credits
+## License and credits
 
 Stargate, the SGC and the gate designs belong to MGM. This is an unofficial fan
 project, made for fun, not affiliated with or endorsed by the rights holders.

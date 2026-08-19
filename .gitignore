@@ -23,3 +23,6 @@ assets/*.mp4
 # sharing, not repo content - GitHub renders video from release assets or a
 # drag-and-drop upload, not from a relative path.
 stargate-*.mp4
+
+# Extracted release bundle, if you unzip it in place.
+StargateCommand-*/

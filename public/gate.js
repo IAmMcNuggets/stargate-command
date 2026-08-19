@@ -7,7 +7,7 @@
 const TAU = Math.PI * 2;
 
 /*
- * Where each chevron sits, in degrees clockwise from top dead centre, indexed
+ * Where each chevron sits, in degrees clockwise from top dead center, indexed
  * by chevron number 1-9.
  *
  * They are NOT evenly numbered around the ring. The seven address chevrons are
@@ -38,7 +38,7 @@ const DECO_COUNT = GLYPH_COUNT * 5;
 /*
  * The gate is drawn the way the SGC diagnostics screen draws it: a schematic,
  * not a photograph. Glowing blue structural rings, symbol cells picked out in
- * green, flat grey chevron brackets, and a near-black aperture.
+ * green, flat gray chevron brackets, and a near-black aperture.
  */
 const PALETTE = {
   ringGlow: '#29b6f6',
@@ -100,7 +100,7 @@ class Gate {
 
     // chevron display number (1-9) -> { lit, glyph, flash }
     this.chevrons = new Map();
-    this.activeGlyph = null; // glyph currently at top dead centre
+    this.activeGlyph = null; // glyph currently at top dead center
     this.glyphFlash = 0;
 
     // The top chevron grabs every symbol, separately from the numbered
@@ -116,7 +116,7 @@ class Gate {
     this.centerAlpha = 0;
 
     // The seven destination boxes down the right, and the symbol in flight
-    // between the gate centre and its box.
+    // between the gate center and its box.
     this.slots = new Array(7).fill(null);
     this.flight = null; // { glyph, slot, t }
 
@@ -159,7 +159,7 @@ class Gate {
     this.w = w;
     this.h = h;
     // Reserve a gutter on the right for the destination boxes and sit the
-    // gate left of centre, as the SGC console does. Below a certain width
+    // gate left of center, as the SGC console does. Below a certain width
     // there is no room, so the boxes are dropped rather than squeezed.
     const gutter = Math.min(w * 0.17, h * 0.2);
     this.showSlots = w - gutter > h * 0.92 && gutter > 34;
@@ -174,9 +174,9 @@ class Gate {
     this.slotDX = usableW + gutter / 2 - this.cx;
     this._chevCache = null;
 
-    // The gate sits left of the canvas centre to clear the destination boxes;
+    // The gate sits left of the canvas center to clear the destination boxes;
     // anything that wants to line up with it needs to know by how much.
-    this.centreOffset = this.cx - w / 2;
+    this.centerOffset = this.cx - w / 2;
     if (this.onLayout) this.onLayout(this);
   }
 
@@ -246,13 +246,13 @@ class Gate {
   }
 
   /**
-   * Rotate the inner ring until `glyph` sits at top dead centre, under the
+   * Rotate the inner ring until `glyph` sits at top dead center, under the
    * chevron that does the grabbing. Every symbol comes to the top; the
    * numbered chevrons light in sequence around the ring, and the seventh —
    * which is the top one — stays locked with the Point of Origin beneath it.
    *
    * `minTurns` forces extra full revolutions — on screen the ring always
-   * travels a long way, never a token nudge to the neighbouring symbol.
+   * travels a long way, never a token nudge to the neighboring symbol.
    *
    * `timing` is either a fixed millisecond count, or `{ degPerSec, minMs }`.
    * Prefer the latter: the ring is a heavy motor-driven lump, so it should
@@ -266,7 +266,7 @@ class Gate {
     const slot = (glyph * TAU) / GLYPH_COUNT;
     const target = -slot; // ringAngle 0 puts glyph 0 at top
 
-    // Normalise so we always travel `direction` and cover a decent arc.
+    // Normalize so we always travel `direction` and cover a decent arc.
     const from = this.ringAngle;
     let delta = target - from;
     delta = ((delta % TAU) + TAU) % TAU; // 0..TAU, clockwise
@@ -508,7 +508,7 @@ class Gate {
     ctx.arc(0, 0, aR, 0, TAU);
     ctx.clip();
 
-    // Deep pool. Darker at the rim, luminous toward the centre.
+    // Deep pool. Darker at the rim, luminous toward the center.
     const pool = ctx.createRadialGradient(0, 0, aR * 0.04, 0, 0, aR);
     pool.addColorStop(0, `rgba(150, 216, 255, ${0.92 * hz})`);
     pool.addColorStop(0.3, `rgba(46, 150, 226, ${0.9 * hz})`);
@@ -656,7 +656,7 @@ class Gate {
    * shutter, per canon.
    *
    * The spiral is not decoration — it falls out of the mechanism. Each blade's
-   * leading edge is a circular ARC whose centre is offset from the gate centre,
+   * leading edge is a circular ARC whose center is offset from the gate center,
    * sitting at distance (r + Rb) along the blade's own angle. The aperture is
    * the envelope of those arcs, which is why a real iris closes to a curved
    * polygon that twists rather than a plain shrinking circle. The blades also
@@ -672,7 +672,7 @@ class Gate {
     const hub = aR * 0.055;    // the plates meet on a hub, not on a point
     const r = hub + (aR - hub) * (1 - t);
     const rot = 0.5 * t;
-    const d = r + Rb;          // centre of every plate's edge arc
+    const d = r + Rb;          // center of every plate's edge arc
     const Rr = aR * 1.06;      // where a plate meets the housing
 
     /*
@@ -682,7 +682,7 @@ class Gate {
      *
      *   s   half-angle of the edge arc, from the triangle O-C-P where the
      *       edge circle crosses the housing  (law of cosines)
-     *   phi bearing of that crossing from the gate centre
+     *   phi bearing of that crossing from the gate center
      *
      * Hard-coding these was the bug behind the overlap artifacts: the edge arc
      * ended at 1.09 rad while the rim arc it joined spanned 0.43 rad, so
@@ -692,10 +692,10 @@ class Gate {
     const s = Math.acos(cosS);
     const phi = Math.atan2(Rb * Math.sin(s), d - Rb * Math.cos(s));
 
-    const centre = [];
+    const center = [];
     for (let i = 0; i < N; i++) {
       const a = (i / N) * TAU + rot;
-      centre.push({ a, x: Math.cos(a) * d, y: Math.sin(a) * d });
+      center.push({ a, x: Math.cos(a) * d, y: Math.sin(a) * d });
     }
 
     ctx.save();
@@ -706,7 +706,7 @@ class Gate {
     /*
      * Each plate is drawn as its ACTUAL VISIBLE SHAPE: the region outside its
      * own edge arc and inside the NEXT plate's, which is precisely the part a
-     * real blade leaves showing before it tucks underneath its neighbour.
+     * real blade leaves showing before it tucks underneath its neighbor.
      *
      * This matters for more than looks. Drawing full overlapping lunes needs
      * every blade painted under the next one, all the way round — a cyclic
@@ -723,8 +723,8 @@ class Gate {
     };
 
     for (let i = 0; i < N; i++) {
-      const c1 = centre[i];
-      const c2 = centre[(i + 1) % N];
+      const c1 = center[i];
+      const c2 = center[(i + 1) % N];
 
       const ux = c2.x - c1.x;
       const uy = c2.y - c1.y;
@@ -788,7 +788,7 @@ class Gate {
     ctx.restore();
   }
 
-  /** Geometry of destination box `i`, in gate-centre coordinates. */
+  /** Geometry of destination box `i`, in gate-center coordinates. */
   _slotRect(i) {
     const s = this.slotSize;
     const pitch = s + this.slotGap;
@@ -824,7 +824,7 @@ class Gate {
     }
   }
 
-  /** The symbol mid-flight from the gate centre to its box. */
+  /** The symbol mid-flight from the gate center to its box. */
   _drawFlight(ctx, R) {
     if (!this.flight) return;
     const { glyph, slot, t } = this.flight;
@@ -886,7 +886,7 @@ class Gate {
     const step = TAU / GLYPH_COUNT;
 
     for (let i = 0; i < GLYPH_COUNT; i++) {
-      // Bearing from top dead centre, clockwise — the same convention the
+      // Bearing from top dead center, clockwise — the same convention the
       // chevrons use. ctx.rotate(t) then translate(0, -r) lands a point at
       // bearing t, so this must NOT carry an extra -PI/2: that offset put
       // every symbol 90 degrees anticlockwise of its chevron.
@@ -907,7 +907,7 @@ class Gate {
       const isActive = this.activeGlyph === i && !this.spinning;
       const locked = [...this.chevrons.values()].some((c) => c.glyph === i);
 
-      // Falloff around top dead centre, where symbols are brought to lock.
+      // Falloff around top dead center, where symbols are brought to lock.
       const d = Math.abs(((theta + Math.PI) % TAU) - Math.PI);
       const proximity = clamp(1 - d / (step * 3), 0, 1);
 
@@ -952,7 +952,7 @@ class Gate {
   /**
    * The chevron silhouette: an arrowhead aimed at the event horizon, mounted
    * on the outer body. Built once per resize and reused for all nine.
-   * Drawn at top dead centre; callers rotate into position.
+   * Drawn at top dead center; callers rotate into position.
    */
   _chevronPath(R, big) {
     const key = big ? 'big' : 'small';
@@ -1013,13 +1013,13 @@ class Gate {
       const { frame, light } = this._chevronPath(R, number === 7);
       const entry = this.chevrons.get(number);
       let lit = entry ? clamp(entry.lit, 0, 1) : 0;
-      // Chevron 7 is at top dead centre and doubles as the grabber.
+      // Chevron 7 is at top dead center and doubles as the grabber.
       if (number === 7) lit = Math.max(lit, this.topGrab);
 
       ctx.save();
       ctx.rotate(theta);
 
-      // Flat grey bracket, as the diagnostics screen renders it.
+      // Flat gray bracket, as the diagnostics screen renders it.
       const mg = ctx.createLinearGradient(0, -R * 1.03, 0, -R * 0.855);
       mg.addColorStop(0, PALETTE.chevronBody);
       mg.addColorStop(0.55, '#5d6b77');

@@ -57,7 +57,7 @@ for ($i = 0; $i -lt 39; $i++) {
     $g.DrawLine($rule, [single]$x1, [single]$y1, [single]$x2, [single]$y2)
 }
 
-# Nine chevrons; the one at top dead centre is the locking chevron.
+# Nine chevrons; the one at top dead center is the locking chevron.
 $degrees = @(40, 80, 120, 160, 200, 240, 0, 280, 320)
 $idle = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 104, 88, 66))
 $lit  = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 90, 31))

@@ -581,7 +581,7 @@ function sleep(ms) {
 /*
  * An established wormhole stays up for a while rather than snapping shut the
  * instant the program launches. The console is released as soon as transit
- * completes, so you can keep working — dialling again, or Esc, shuts it early.
+ * completes, so you can keep working — dialing again, or Esc, shuts it early.
  */
 const WORMHOLE_SECONDS = 60;
 let wormholeTimer = null;
@@ -654,7 +654,7 @@ async function dialSelected(forceFull) {
 
       if (speed.spin) banner('INNER TRACK — ' + GLYPH_NAMES[glyph]);
 
-      // Every symbol is brought to top dead centre. The spin sound is started
+      // Every symbol is brought to top dead center. The spin sound is started
       // from inside, once the real duration is known.
       await gate.spinTo(
         glyph,
@@ -700,7 +700,7 @@ async function dialSelected(forceFull) {
     sfx.kawoosh(speed.kawoosh);
     gate.hideCenterGlyph(200);
 
-    // The iris sits in front of the event horizon. Dialling still completes;
+    // The iris sits in front of the event horizon. Dialing still completes;
     // nothing is allowed through.
     const blocked = state.irisClosed;
     // Capture the failure rather than letting it reject unhandled — the
@@ -942,11 +942,11 @@ function toggleAudio() {
 
 /*
  * Keep the banner on the gate's axis rather than the stage's. The gate is
- * offset left to make room for the destination boxes, so a banner centred on
+ * offset left to make room for the destination boxes, so a banner centered on
  * the panel reads as slightly misaligned with the thing it describes.
  */
 function syncGateAxis() {
-  document.documentElement.style.setProperty('--gate-offset', (gate.centreOffset || 0) + 'px');
+  document.documentElement.style.setProperty('--gate-offset', (gate.centerOffset || 0) + 'px');
 }
 gate.onLayout = syncGateAxis;
 

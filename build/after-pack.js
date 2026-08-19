@@ -3,7 +3,7 @@
  * Trim runtime files Electron ships that this app provably never uses.
  *
  * dxcompiler.dll / dxil.dll are the DirectX shader compiler, loaded only when
- * Chromium initialises WebGPU. The gate is drawn entirely with 2D canvas, so
+ * Chromium initializes WebGPU. The gate is drawn entirely with 2D canvas, so
  * that path is never taken — verified by running a packaged build with both
  * removed: the ring renders, a full seven-chevron dial completes, the event
  * horizon paints, and a program launches. Together they are ~26 MB.
@@ -18,7 +18,7 @@
  *                       some Electron builds for a couple of megabytes.
  *   LICENSES.chromium.html
  *                       large, but it is the copyright notice Chromium's
- *                       licence requires be distributed. It also compresses to
+ *                       license requires be distributed. It also compresses to
  *                       almost nothing in the installer.
  *
  * To keep everything Electron ships, remove "afterPack" from package.json.

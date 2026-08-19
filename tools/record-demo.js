@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Record a demo clip of the gate dialling.
+ * Record a demo clip of the gate dialing.
  *
  *   "dist\win-unpacked\Stargate Command.exe" --remote-debugging-port=9222
  *   node tools/record-demo.js [scene] [out.mp4]     scenes: dial, iris

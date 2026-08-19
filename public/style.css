@@ -291,7 +291,7 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
 
 /* The banner used to float over the bottom of the gate, which meant it sat
    across chevrons 8 and 9 — and once the gate shifted left to make room for
-   the destination boxes it was no longer centred on anything. It now has its
+   the destination boxes it was no longer centered on anything. It now has its
    own reserved strip below the gate, so it covers nothing and the space is
    held whether or not a message is showing. */
 .banner-row {
@@ -648,7 +648,7 @@ body.dialing #search { opacity: .45; }
 .results li.is-hidden { opacity: .5; border-left-color: var(--cyan-faint); }
 .results li.is-hidden .nm { text-decoration: line-through; }
 
-/* Dialling is off while managing, so the gate controls read as inactive. */
+/* Dialing is off while managing, so the gate controls read as inactive. */
 body.managing .stage-foot,
 body.managing .col-left { opacity: .6; }
 

@@ -1,4 +1,4 @@
-# Keep text normalised in the repo; Git checks out CRLF on Windows.
+# Keep text normalized in the repo; Git checks out CRLF on Windows.
 * text=auto
 
 *.js    text eol=lf

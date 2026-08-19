@@ -3,8 +3,8 @@
  * Minimal PNG decoder — enough to read a glyph sheet, nothing more.
  * Uses only Node's built-in zlib, so the project stays dependency-free.
  *
- * Supports colour types 0/2/3/4/6 at bit depth 8, plus sub-byte depths for
- * greyscale and palette. Adam7 interlacing is rejected rather than guessed at.
+ * Supports color types 0/2/3/4/6 at bit depth 8, plus sub-byte depths for
+ * grayscale and palette. Adam7 interlacing is rejected rather than guessed at.
  */
 
 const fs = require('fs');
@@ -113,10 +113,10 @@ function decodePNG(filePath) {
 
   const { width, height, depth, colorType } = ihdr;
   const channels = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[colorType];
-  if (!channels) throw new Error('unsupported PNG colour type ' + colorType);
+  if (!channels) throw new Error('unsupported PNG color type ' + colorType);
   if (depth === 16) throw new Error('16-bit PNGs are not supported — re-save as 8-bit');
   if (depth !== 8 && colorType !== 0 && colorType !== 3) {
-    throw new Error('bit depth ' + depth + ' only supported for greyscale/palette');
+    throw new Error('bit depth ' + depth + ' only supported for grayscale/palette');
   }
 
   const bitsPerPixel = channels * depth;

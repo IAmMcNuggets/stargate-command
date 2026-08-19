@@ -198,7 +198,7 @@ function hasTracedGlyphs() {
 }
 
 /**
- * Draw a glyph centred on the current origin.
+ * Draw a glyph centered on the current origin.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} index    0-38
  * @param {number} size     bounding box edge in px

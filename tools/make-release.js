@@ -59,7 +59,7 @@ const install = [
   '   Click "More info", then "Run anyway".',
   '',
   '   This is expected. The app is not code-signed - a signing certificate',
-  '   costs a few hundred pounds a year, and this is a hobby project.',
+  '   costs a few hundred dollars a year, and this is a hobby project.',
   '   SmartScreen shows that warning for any unsigned installer.',
   '',
   '   If you would rather not trust a stranger\'s binary, the full source is',

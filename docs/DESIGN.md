@@ -87,14 +87,14 @@ back.
 
 A normal row carries **no hide control at all** — there is nothing to
 mis-click while you are launching things, which an earlier per-row ✕ could not
-promise however much confirmation was bolted onto it. Dialling is disabled
+promise however much confirmation was bolted onto it. Dialing is disabled
 while managing, and the tick *is* the hidden state, so every action is
 immediately reversible and needs no confirmation.
 
 Hidden keys live in `settings.json`, so they survive a rescan.
 
 **Window position and size** are remembered between runs, including whether
-it was maximised. Saved bounds are ignored if they no longer land on a
+it was maximized. Saved bounds are ignored if they no longer land on a
 connected display.
 
 **Program icons.** Each entry shows the program's real icon. Anything without
@@ -148,7 +148,7 @@ dropped rather than squeezed.
 
 **The gate stays open for 60 seconds** after transit, counting down in the
 GATE readout. The console is released the moment transit completes, so you can
-carry on searching or dial again immediately — dialling again, or <kbd>Esc</kbd>,
+carry on searching or dial again immediately — dialing again, or <kbd>Esc</kbd>,
 shuts it early.
 
 **Chevron positions.** They are not evenly numbered around the ring. The seven
@@ -158,7 +158,7 @@ In degrees clockwise from top: `7:0  1:40  2:80  3:120  8:160  9:200  4:240
 5:280  6:320`. Lighting them 1→7 therefore sweeps down one side and up the
 other.
 
-Every symbol is brought to **top dead centre**, as on screen. The top chevron
+Every symbol is brought to **top dead center**, as on screen. The top chevron
 grabs it there while the numbered chevron latches and stays lit, so the
 chevrons fill in 1→7 around the ring as the dial proceeds. Chevron 7 *is* the
 top one, so a seven-symbol address finishes with the Point of Origin sitting
@@ -210,7 +210,7 @@ URIs. Shortcuts go through `Icon.ExtractAssociatedIcon` on the *.lnk itself*,
 so a shortcut's own `IconLocation` is honoured rather than guessed from the
 target — that is what Explorer shows you. Store apps are resolved from the
 package manifest, preferring the `altform-unplated` asset, which is the bare
-glyph without the coloured backing tile that looks wrong on a dark console.
+glyph without the colored backing tile that looks wrong on a dark console.
 
 Extraction costs roughly 50ms per program, so it runs in the background after
 a scan and the renderer is sent a fresh catalog when the icons land — it keeps
@@ -279,10 +279,10 @@ stdin in ~400ms.
 constellation glyphs plus the Point of Origin. Deterministic, so a given
 program always has the same address — Photoshop is always Photoshop.
 
-**The look** is modelled on the SGC gate-diagnostics screen: deep navy ground,
+**The look** is modeled on the SGC gate-diagnostics screen: deep navy ground,
 cyan structure and type, green reserved for the gate symbols, amber for a
 handful of status indicators only. The gate is drawn as a schematic rather
-than a photograph — glowing structural circles, symbol cells, flat grey
+than a photograph — glowing structural circles, symbol cells, flat gray
 chevron brackets. The telemetry around the edges (code strip, subset tables,
 drifting hex) is decorative and marked `aria-hidden`; it's what makes the
 thing read as an instrument rather than a web page.
@@ -326,7 +326,7 @@ dark-on-light sheets, `--minarea` to drop JPEG compression speckle,
 `--epsilon` for how hard to simplify.
 
 If `public/glyph-paths.js` is missing or empty, `glyphs.js` falls back to
-procedurally generated constellation shapes — recognisable, but not the real
+procedurally generated constellation shapes — recognizable, but not the real
 symbols. Names follow the canonical list either way (Crater, Virgo, Boötes, …
 Leo), with glyph 1 as the Point of Origin.
 
@@ -341,28 +341,28 @@ detuned drone for the open wormhole. No sample files anywhere.
 Press <kbd>I</kbd> or use the **IRIS** button. The trinium blades spiral shut
 across the event horizon and the button turns amber.
 
-The blades are modelled as a real multi-bladed leaf shutter, which is what
-canon describes: each plate's leading edge is a circular **arc whose centre is
-offset from the gate centre**, and the aperture is the envelope of those arcs.
+The blades are modeled as a real multi-bladed leaf shutter, which is what
+canon describes: each plate's leading edge is a circular **arc whose center is
+offset from the gate center**, and the aperture is the envelope of those arcs.
 That is where the spiral comes from — it falls out of the mechanism rather
 than being drawn on. The plates sweep round as they close, deepening the
 twist, and meet on a small central hub rather than a mathematical point.
 Twenty-two of them, per the "more than 20 interlocking plates" in the source
 material.
 
-Each plate is filled **flat**, stepping tone between neighbours. An earlier
+Each plate is filled **flat**, stepping tone between neighbors. An earlier
 version shaded a gradient across every blade, which made the whole assembly
 read as a smooth 3D cone instead of overlapping sheet metal.
 
 Both arc spans are **derived, not chosen**. A plate is the region inside the
 housing and outside its own edge arc, so the two arcs must meet at the same
 two points: `s`, the half-angle of the edge arc, comes from the law of cosines
-on the triangle centre-to-plate-centre-to-crossing, and `phi` is the bearing of
+on the triangle center-to-plate-center-to-crossing, and `phi` is the bearing of
 that crossing. Hard-coding them was the cause of the overlap artifacts — the
 edge arc ended at 1.09 rad while the rim arc it joined spanned only 0.43 rad,
 so `closePath` drew a chord straight across the aperture. Each plate is drawn as its **actual visible shape**: the region outside its own
 edge arc and inside the *next* plate's — precisely the part a real blade leaves
-showing before it tucks under its neighbour. These shapes tile the annulus
+showing before it tucks under its neighbor. These shapes tile the annulus
 rather than overlapping.
 
 That last point is load-bearing. Drawing full overlapping lunes requires every
