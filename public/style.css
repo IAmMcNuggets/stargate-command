@@ -430,7 +430,15 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
   margin: 0 10px;
   position: relative; z-index: 20;
   border-top: 1px solid var(--cyan-faint);
+  /* DIAL gets its own full-height column: it is the one control here that
+     does anything, and a slab you can hit without looking suits a DHD better
+     than another button in a row of them. */
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(10px * var(--ui));
+  align-items: stretch;
 }
+.dhd-main { min-width: 0; }
 
 .dhd-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .dhd-title {
@@ -816,27 +824,28 @@ body.managing .col-left { opacity: .6; }
    is a different thing from opening a program. */
 .results li.is-remote { border-left-color: var(--amber); }
 
-/* The DHD's DIAL is the point of the whole row, so it is not a ghost button
-   like the rest of the footer: filled and brighter once the address is
-   complete, and plainly dead until then. */
+/* Deliberately the biggest thing on the strip. */
 #dhd-dial {
-  min-width: calc(76px * var(--ui));
+  font-family: var(--mono);
+  min-width: calc(128px * var(--ui));
+  font-size: calc(16px * var(--ui));
   font-weight: 700;
-  letter-spacing: .22em;
-  padding: calc(5px * var(--ui)) calc(14px * var(--ui));
+  letter-spacing: .3em;
+  text-indent: .3em; /* letter-spacing pads the right; put it back on the left */
+  padding: 0 calc(10px * var(--ui));
+  color: var(--green-hot);
+  background: rgba(0, 230, 118, .1);
+  border: 1px solid rgba(0, 230, 118, .4);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s, box-shadow .12s;
 }
 #dhd-dial:not(:disabled) {
   color: #04140f;
   background: var(--green);
   border-color: var(--green-hot);
-  box-shadow: 0 0 10px rgba(0, 230, 118, .45);
+  box-shadow: 0 0 16px rgba(0, 230, 118, .5), inset 0 0 20px rgba(255, 255, 255, .18);
 }
-#dhd-dial:not(:disabled):hover {
-  background: var(--green-hot);
-  color: #04140f;
-}
-#dhd-dial:disabled {
-  opacity: .4;
-  cursor: default;
-  box-shadow: none;
-}
+#dhd-dial:not(:disabled):hover { background: var(--green-hot); }
+#dhd-dial:not(:disabled):active { transform: translateY(1px); }
+#dhd-dial:disabled { opacity: .3; cursor: default; box-shadow: none; }
+#dhd-dial:focus-visible { outline: 2px solid var(--green-hot); outline-offset: 2px; }
