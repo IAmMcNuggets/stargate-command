@@ -167,27 +167,40 @@ class Gate {
     this.canvas.height = Math.round(h * this.dpr);
     this.w = w;
     this.h = h;
-    // Reserve a gutter on the right for the destination boxes and sit the
-    // gate left of center, as the SGC console does. Below a certain width
-    // there is no room, so the boxes are dropped rather than squeezed.
+    // A gutter on the right holds the destination boxes. Below a certain
+    // width there is no room, so the boxes are dropped rather than squeezed.
     const gutter = Math.min(w * 0.17, h * 0.2);
     this.showSlots = w - gutter > h * 0.92 && gutter > 34;
     const usableW = this.showSlots ? w - gutter : w;
-
-    this.cx = usableW / 2;
-    this.cy = h / 2;
-    this.R = Math.min(usableW, h) / 2 - Math.min(usableW, h) * 0.055;
 
     // 0.735 of the height is what seven boxes at the old fixed size came to.
     // Dividing it keeps the column the same length whether there are seven or
     // nine, shrinking the boxes instead of running off the bottom.
     this.slotSize = Math.min(gutter * 0.72, (h * 0.735) / this.slotCount);
     this.slotGap = this.slotSize * 0.28;
+
+    // The ring sits in the middle of the canvas. It used to be centred on
+    // the space left of the boxes instead, which put it off to the left and
+    // meant everything wanting to line up with it - the banner, the DHD -
+    // had to be nudged the same way.
+    this.cx = w / 2;
+    this.cy = h / 2;
+
+    // The boxes did not move with it, so the ring has to stop short of them.
+    // In most window shapes the height is the tighter limit and this changes
+    // nothing; it only bites on a wide, short window.
+    const margin = Math.min(w, h) * 0.055;
+    const boxLeft = this.showSlots ? usableW + gutter / 2 - this.slotSize / 2 : w;
+    this.R = Math.max(
+      40,
+      Math.min(h / 2 - margin, boxLeft - this.cx - margin * 0.5, this.cx - margin)
+    );
+
     this.slotDX = usableW + gutter / 2 - this.cx;
     this._chevCache = null;
 
-    // The gate sits left of the canvas center to clear the destination boxes;
-    // anything that wants to line up with it needs to know by how much.
+    // Zero now that the ring is centred, but still published: callers should
+    // keep asking rather than assuming, in case this moves again.
     this.centerOffset = this.cx - w / 2;
     if (this.onLayout) this.onLayout(this);
   }
