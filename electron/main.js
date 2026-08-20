@@ -25,6 +25,14 @@ const icons = createIconStore(DATA_DIR, log);
 let mainWindow = null;
 let activator = null;
 
+const IS_WIN32 = process.platform === 'win32';
+
+// globalShortcut cannot grab keys under a Wayland session; Plasma defaults to
+// Wayland, so a summon hotkey has to come from KDE System Settings there.
+// Windows and X11 are unaffected.
+const IS_WAYLAND =
+  !IS_WIN32 && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
+
 function log(message, isError) {
   (isError ? console.error : console.log)('  ' + message);
 }
@@ -125,6 +133,13 @@ function applyHotkey(accelerator) {
     activeHotkey = null;
   }
   if (!accelerator) return { ok: true, hotkey: null };
+  if (IS_WAYLAND) {
+    return {
+      ok: false,
+      hotkey: null,
+      error: 'global hotkeys are not available under Wayland — set a shortcut in KDE System Settings instead',
+    };
+  }
   try {
     const ok = globalShortcut.register(accelerator, summon);
     if (!ok) return { ok: false, hotkey: activeHotkey, error: 'already taken by another app' };
@@ -145,7 +160,21 @@ function classifyTarget(raw) {
   const t = String(raw || '').trim();
   if (!t) throw new Error('a target is required');
   if (/^https?:\/\//i.test(t)) return { kind: 'url', launchPath: t, target: '' };
-  if (/\.(exe|com|bat|cmd)$/i.test(t)) return { kind: 'lnk', launchPath: t, target: t };
+  if (IS_WIN32) {
+    if (/\.(exe|com|bat|cmd)$/i.test(t)) return { kind: 'lnk', launchPath: t, target: t };
+    return { kind: 'file', launchPath: t, target: '' };
+  }
+  if (/\.desktop$/i.test(t)) return { kind: 'desktop', launchPath: t, target: t };
+  // A file with the executable bit set is run directly; anything else
+  // (documents, folders) is handed to the shell, like double-clicking it.
+  let executable = false;
+  try {
+    require('fs').accessSync(t, require('fs').constants.X_OK);
+    executable = true;
+  } catch (_) {
+    executable = false;
+  }
+  if (executable) return { kind: 'command', launchPath: t, target: t };
   return { kind: 'file', launchPath: t, target: '' };
 }
 
@@ -180,7 +209,7 @@ ipcMain.handle('catalog:get', async () => {
 ipcMain.handle('catalog:rescan', async () => {
   await catalog.ensure(true);
   syncCustom(); // a rescan rebuilds the merged list, so re-apply custom entries
-  refreshIcons(false);
+  refreshIcons(true); // re-attempt previously-missed icons on a manual rescan
   return clientList();
 });
 
@@ -228,10 +257,15 @@ ipcMain.handle('dialog:pickTarget', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose a program, file or folder',
     properties: ['openFile'],
-    filters: [
-      { name: 'Programs', extensions: ['exe', 'bat', 'cmd', 'com', 'lnk'] },
-      { name: 'All files', extensions: ['*'] },
-    ],
+    filters: IS_WIN32
+      ? [
+          { name: 'Programs', extensions: ['exe', 'bat', 'cmd', 'com', 'lnk'] },
+          { name: 'All files', extensions: ['*'] },
+        ]
+      : [
+          { name: 'Programs', extensions: ['desktop'] },
+          { name: 'All files', extensions: ['*'] },
+        ],
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];
@@ -286,7 +320,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     catalog.loadCache();
     syncCustom();
-    activator = createAppxActivator(DATA_DIR, log);
+    if (IS_WIN32) activator = createAppxActivator(DATA_DIR, log);
     createWindow();
 
     const wanted = settings.get('hotkey');

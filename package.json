@@ -12,6 +12,8 @@
     "serve": "node server.js",
     "dist": "electron-builder --win --publish never",
     "pack": "electron-builder --win --dir --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "pack:linux": "electron-builder --linux --dir --publish never",
     "trace-glyphs": "node tools/trace-glyphs.js assets/glyphs.png --region 228,196,772,812 --circle 623,623,535 --cols 6 --rows 7 --preview",
     "release": "node tools/make-release.js"
   },
@@ -22,11 +24,11 @@
       "output": "dist",
       "buildResources": "build"
     },
-    "electronDist": "node_modules/electron/dist",
     "files": [
       "electron/**/*",
       "lib/**/*",
       "public/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "win": {
@@ -47,6 +49,19 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Stargate Command"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "executableName": "stargate-command"
     },
     "electronLanguages": [
       "en-US"
