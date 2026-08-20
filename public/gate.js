@@ -148,14 +148,21 @@ class Gate {
 
   /* ---------------- geometry ---------------- */
 
-  _resize() {
+  /**
+   * @param {boolean} [force]  recompute even when the canvas is the same size.
+   *        Needed when something other than the window changed the layout, such
+   *        as switching between a seven and nine box column.
+   */
+  _resize(force) {
     // Re-read on every resize: dragging to a monitor with different scaling
     // changes this, and a stale value scales the whole drawing wrongly.
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = this.canvas.getBoundingClientRect();
     const w = Math.max(120, rect.width);
     const h = Math.max(120, rect.height);
-    if (this.w === w && this.h === h && this.canvas.width === Math.round(w * this.dpr)) return;
+    if (!force && this.w === w && this.h === h && this.canvas.width === Math.round(w * this.dpr)) {
+      return;
+    }
     this.canvas.width = Math.round(w * this.dpr);
     this.canvas.height = Math.round(h * this.dpr);
     this.w = w;
@@ -197,7 +204,10 @@ class Gate {
     if (count === this.slotCount) return;
     this.slotCount = count;
     this.slots = new Array(count).fill(null);
-    this._resize();
+    // Forced: the canvas is usually the same size as it was a moment ago, and
+    // an unforced resize would return before recomputing the box size, leaving
+    // nine boxes drawn at the size worked out for seven.
+    this._resize(true);
   }
 
   reset() {

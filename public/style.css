@@ -815,3 +815,28 @@ body.managing .col-left { opacity: .6; }
 /* Remote destinations are tagged in the registry, since a nine-chevron dial
    is a different thing from opening a program. */
 .results li.is-remote { border-left-color: var(--amber); }
+
+/* The DHD's DIAL is the point of the whole row, so it is not a ghost button
+   like the rest of the footer: filled and brighter once the address is
+   complete, and plainly dead until then. */
+#dhd-dial {
+  min-width: calc(76px * var(--ui));
+  font-weight: 700;
+  letter-spacing: .22em;
+  padding: calc(5px * var(--ui)) calc(14px * var(--ui));
+}
+#dhd-dial:not(:disabled) {
+  color: #04140f;
+  background: var(--green);
+  border-color: var(--green-hot);
+  box-shadow: 0 0 10px rgba(0, 230, 118, .45);
+}
+#dhd-dial:not(:disabled):hover {
+  background: var(--green-hot);
+  color: #04140f;
+}
+#dhd-dial:disabled {
+  opacity: .4;
+  cursor: default;
+  box-shadow: none;
+}

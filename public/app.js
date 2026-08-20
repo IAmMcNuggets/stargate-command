@@ -804,6 +804,28 @@ async function dialAddress(app, address, forceFull) {
 
     if (!state.dialing) return; // aborted mid-sequence
 
+    // Nothing at this address. Every symbol encoded, but there is nothing on
+    // the far side to lock onto, so the gate never establishes and no vortex
+    // forms. Only a real destination gets the kawoosh.
+    if (app.missing) {
+      log('NO SUCH ADDRESS', 'err');
+      banner('NO SUCH ADDRESS', 'err');
+      setGateStatus('FAILED', 'hot');
+      sfx.error();
+      await gate.failSequence(700);
+      state.dialing = false;
+      document.body.classList.remove('dialing');
+      renderDhd();
+      gate.reset();
+      resetChevronList();
+      renderAddressStrip(state.address);
+      setGateStatus('IDLE', '');
+      await sleep(1200);
+      clearBanner();
+      $search.focus();
+      return;
+    }
+
     // Wormhole. Fire the launch at the moment of the kawoosh so the program
     // is already coming up while the event horizon settles.
     setGateStatus('OPEN', 'open');
@@ -817,17 +839,13 @@ async function dialAddress(app, address, forceFull) {
     const blocked = state.irisClosed;
     // Capture the failure rather than letting it reject unhandled — the
     // promise is created here but not awaited until the kawoosh finishes.
-    // A hand-dialled address that matches nothing is not an error until the
-    // wormhole should have formed. The gate commits to the whole sequence.
-    const noSuchAddress = !!app.missing;
-    let launchError = noSuchAddress ? new Error('no such address') : null;
-    const launching =
-      blocked || noSuchAddress
-        ? Promise.resolve(null)
-        : Promise.resolve(backend.launch(app.id)).catch((e) => {
-            launchError = e;
-            return null;
-          });
+    let launchError = null;
+    const launching = blocked
+      ? Promise.resolve(null)
+      : Promise.resolve(backend.launch(app.id)).catch((e) => {
+          launchError = e;
+          return null;
+        });
 
     await gate.openWormhole(speed.kawoosh);
     sfx.startHum();
@@ -841,8 +859,8 @@ async function dialAddress(app, address, forceFull) {
     } else if (launchError) {
       // The program did not start. Collapse the gate rather than sitting
       // there claiming an established wormhole for a minute.
-      log(noSuchAddress ? 'NO SUCH ADDRESS' : 'WORMHOLE COULD NOT BE ESTABLISHED — ' + cleanError(launchError), 'err');
-      banner(noSuchAddress ? 'NO SUCH ADDRESS' : 'WORMHOLE COULD NOT BE ESTABLISHED', 'err');
+      log('WORMHOLE COULD NOT BE ESTABLISHED — ' + cleanError(launchError), 'err');
+      banner('WORMHOLE COULD NOT BE ESTABLISHED', 'err');
       setGateStatus('FAILED', 'hot');
       sfx.error();
       sfx.stopHum();
@@ -1063,7 +1081,10 @@ async function dialComposed() {
 
   state.address = address;
   await dialAddress(target, address, false);
-  if (found) clearCompose();
+  // Cleared either way. After a miss the symbols were wrong, and after a hit
+  // the address has been dialled; keeping them only means clearing by hand
+  // before the next one.
+  clearCompose();
 }
 
 /* ---------------- assigning an address to a destination ---------------- */
