@@ -103,6 +103,14 @@ the Windows gotchas that cost real time.
 
 ## License and credits
 
-Stargate, the SGC and the gate designs belong to MGM. This is an unofficial fan
-project, made for fun, not affiliated with or endorsed by the rights holders.
-The code is MIT licensed, so do what you like with it.
+Stargate, the SGC, the gate designs, the glyph artwork and the sound effects
+all belong to MGM. This is an unofficial fan project, made for fun, not
+affiliated with or endorsed by the rights holders.
+
+**The MIT license covers the code only.** It is not mine to place any license
+on the Stargate material in `assets/` and `public/sfx/`, and it does not.
+
+The sounds are optional as far as the program is concerned: delete
+`public/sfx/` and it falls back to the synthesized audio it shipped with
+originally, which is built from oscillators and noise. Drop in your own five
+files under the same names and it uses those instead.

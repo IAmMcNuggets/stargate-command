@@ -1,8 +1,27 @@
 'use strict';
 /*
- * Synthesized gate audio. No sample files — everything is built from
- * oscillators and noise buffers so the launcher stays a single folder.
+ * Gate audio, in two layers.
+ *
+ * Recordings in public/sfx/ are used when they are there. Everything still
+ * has a synthesized version behind it, built from oscillators and noise
+ * buffers, so the launcher works with the sfx folder deleted - which matters,
+ * because whether those files ship is a licensing question, not a technical
+ * one.
+ *
+ * They play through HTMLAudioElement rather than being decoded into the Web
+ * Audio graph: the desktop app loads its page over file://, where fetch is
+ * blocked, and createMediaElementSource on a file:// element is not reliably
+ * permitted either. An element plays, takes a volume, and stops, which is all
+ * this needs.
  */
+
+const SFX = {
+  chevronLock: 'sfx/chevron-lock.mp3',
+  ringSpin: 'sfx/ring-spin.mp3',
+  wormholeOpen: 'sfx/wormhole-open.mp3',
+  irisOpen: 'sfx/iris-open.mp3',
+  irisClose: 'sfx/iris-close.mp3',
+};
 
 class GateAudio {
   constructor() {
@@ -12,6 +31,104 @@ class GateAudio {
     this._spin = null;
     this._hum = null;
     this._noise = null;
+
+    this._samples = {};
+    this._playing = [];
+    this._spinEl = null;
+    this._spinTimer = null;
+    this._loadSamples();
+  }
+
+  /* ---------------- recordings ---------------- */
+
+  /*
+   * Probed once at startup. A file that is missing or unplayable leaves its
+   * entry unready and the synthesized version answers instead.
+   */
+  _loadSamples() {
+    for (const name of Object.keys(SFX)) {
+      const entry = { src: SFX[name], ready: false };
+      this._samples[name] = entry;
+      try {
+        const el = new Audio(entry.src);
+        el.preload = 'auto';
+        el.addEventListener('canplaythrough', () => { entry.ready = true; }, { once: true });
+        el.addEventListener('error', () => { entry.ready = false; }, { once: true });
+        entry.el = el;
+      } catch (_) {
+        /* no Audio here: synth only */
+      }
+    }
+  }
+
+  hasSample(name) {
+    const e = this._samples[name];
+    return !!(e && e.ready && this.enabled);
+  }
+
+  /**
+   * Drop an element from the playing list.
+   *
+   * Every route out of _play has to come through here. Pausing a sound does
+   * not fire `ended`, so a faded-out spin would otherwise sit in the list
+   * forever, and the list would grow by one for every dial you ever ran.
+   */
+  _retire(el) {
+    const i = this._playing.indexOf(el);
+    if (i >= 0) this._playing.splice(i, 1);
+  }
+
+  /**
+   * Fire a recording. Each shot gets its own element so a quick run of
+   * chevron locks overlaps rather than cutting itself off.
+   * @returns {HTMLAudioElement|null} the element, so callers can stop it
+   */
+  _play(name, volume) {
+    if (!this.hasSample(name)) return null;
+    try {
+      const el = new Audio(this._samples[name].src);
+      el.volume = Math.max(0, Math.min(1, volume === undefined ? 0.9 : volume));
+      const done = () => this._retire(el);
+      el.addEventListener('ended', done, { once: true });
+      el.addEventListener('error', done, { once: true });
+      this._playing.push(el);
+      const p = el.play();
+      if (p && p.catch) p.catch(done);
+      return el;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /** Ease a playing element down and stop it, so cuts are not abrupt. */
+  _fadeOut(el, ms) {
+    if (!el) return;
+    const steps = 8;
+    const step = Math.max(8, (ms || 140) / steps);
+    const from = el.volume;
+    let i = steps;
+    const tick = setInterval(() => {
+      i -= 1;
+      if (i <= 0) {
+        clearInterval(tick);
+        try { el.pause(); el.currentTime = 0; } catch (_) { /* gone */ }
+        this._retire(el);
+        return;
+      }
+      try { el.volume = Math.max(0, from * (i / steps)); } catch (_) { clearInterval(tick); }
+    }, step);
+  }
+
+  stopAllSamples() {
+    for (const el of this._playing.slice()) {
+      try { el.pause(); } catch (_) { /* gone */ }
+    }
+    this._playing.length = 0;
+    this._spinEl = null;
+    if (this._spinTimer) {
+      clearTimeout(this._spinTimer);
+      this._spinTimer = null;
+    }
   }
 
   /** Must be called from a user gesture the first time. */
@@ -34,6 +151,7 @@ class GateAudio {
     if (!on) {
       this.stopSpin();
       this.stopHum();
+      this.stopAllSamples();
     }
     if (this.master) this.master.gain.value = on ? 0.55 : 0;
   }
@@ -73,6 +191,11 @@ class GateAudio {
 
   /** The heavy mechanical clunk of a chevron locking. */
   chevronLock(final) {
+    if (this._play('chevronLock', final ? 1 : 0.85)) return;
+    this._synthChevronLock(final);
+  }
+
+  _synthChevronLock(final) {
     if (!this._ok()) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
@@ -157,8 +280,28 @@ class GateAudio {
     n.stop(t + 0.16);
   }
 
-  /** The rumble while the inner ring turns. */
+  /**
+   * The rumble while the inner ring turns.
+   *
+   * The recording runs far longer than most spins, which are about a third
+   * of a second upwards, so it is faded out when the ring stops rather than
+   * left playing over the chevron lock.
+   */
   startSpin(duration) {
+    if (this.hasSample('ringSpin')) {
+      this.stopSpin();
+      const el = this._play('ringSpin', 0.75);
+      if (el) {
+        this._spinEl = el;
+        const ms = Math.max(60, (duration || 0.4) * 1000);
+        this._spinTimer = setTimeout(() => this._fadeOut(el, 160), ms);
+        return;
+      }
+    }
+    this._synthStartSpin(duration);
+  }
+
+  _synthStartSpin(duration) {
     if (!this._ok()) return;
     this.stopSpin();
     const ctx = this.ctx;
@@ -192,6 +335,14 @@ class GateAudio {
   }
 
   stopSpin() {
+    if (this._spinTimer) {
+      clearTimeout(this._spinTimer);
+      this._spinTimer = null;
+    }
+    if (this._spinEl) {
+      this._fadeOut(this._spinEl, 120);
+      this._spinEl = null;
+    }
     if (!this._spin) return;
     try {
       this._spin.n.stop();
@@ -204,6 +355,11 @@ class GateAudio {
 
   /** Unstable vortex eruption. */
   kawoosh(duration) {
+    if (this._play('wormholeOpen', 1)) return;
+    this._synthKawoosh(duration);
+  }
+
+  _synthKawoosh(duration) {
     if (!this._ok()) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
@@ -239,6 +395,12 @@ class GateAudio {
     o.connect(og).connect(this.master);
     o.start(t);
     o.stop(t + d + 0.1);
+  }
+
+  /** The trinium blades. Falls back to the chevron clunk, as it used to. */
+  iris(closed) {
+    if (this._play(closed ? 'irisClose' : 'irisOpen', 0.9)) return;
+    this._synthChevronLock(false);
   }
 
   /** The idle shimmer of an open wormhole. */

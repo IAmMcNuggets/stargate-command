@@ -1284,7 +1284,7 @@ function toggleIris() {
   localStorage.setItem('sgc.iris', state.irisClosed ? 'closed' : 'open');
   applyIrisLabel();
   gate.setIris(state.irisClosed, 620);
-  sfx.chevronLock(false);
+  sfx.iris(state.irisClosed);
   log(state.irisClosed ? 'IRIS CLOSED — GATE SEALED' : 'IRIS OPEN', state.irisClosed ? 'lock' : 'ok');
 }
 
