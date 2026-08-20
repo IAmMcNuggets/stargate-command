@@ -430,15 +430,7 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
   margin: 0 10px;
   position: relative; z-index: 20;
   border-top: 1px solid var(--cyan-faint);
-  /* DIAL gets its own full-height column: it is the one control here that
-     does anything, and a slab you can hit without looking suits a DHD better
-     than another button in a row of them. */
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: calc(10px * var(--ui));
-  align-items: stretch;
 }
-.dhd-main { min-width: 0; }
 
 .dhd-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .dhd-title {
@@ -461,11 +453,17 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
 /* Capped and centred rather than stretched edge to edge. Across a wide
    screen a full-width row leaves each glyph adrift in a box five times its
    width, and the real DHD is a compact cluster of keys anyway. */
+/*
+ * 23 columns, because an odd count is the only way a 3-wide DIAL lands on
+ * the exact centre. That leaves 20 key columns per row against 38 keys, so
+ * the second row starts one column in and the two spare cells sit at either
+ * end of it rather than both trailing off the right.
+ */
 .dhd-keys {
   display: grid;
-  grid-template-columns: repeat(19, 1fr);
+  grid-template-columns: repeat(23, 1fr);
   gap: 3px;
-  max-width: calc(1080px * var(--ui));
+  max-width: calc(1180px * var(--ui));
   margin: 0 auto;
 }
 
@@ -824,15 +822,18 @@ body.managing .col-left { opacity: .6; }
    is a different thing from opening a program. */
 .results li.is-remote { border-left-color: var(--amber); }
 
-/* Deliberately the biggest thing on the strip. */
+/* Sits in the middle of the keys, where the DHD keeps its big centre
+   button. Spans both rows so it stays the obvious thing to hit. */
 #dhd-dial {
+  grid-column: 11 / span 3;
+  grid-row: 1 / span 2;
+  justify-self: stretch;
   font-family: var(--mono);
-  min-width: calc(128px * var(--ui));
-  font-size: calc(16px * var(--ui));
+  font-size: calc(13px * var(--ui));
   font-weight: 700;
-  letter-spacing: .3em;
-  text-indent: .3em; /* letter-spacing pads the right; put it back on the left */
-  padding: 0 calc(10px * var(--ui));
+  letter-spacing: .24em;
+  text-indent: .24em; /* letter-spacing pads the right; put it back on the left */
+  padding: 0;
   color: var(--green-hot);
   background: rgba(0, 230, 118, .1);
   border: 1px solid rgba(0, 230, 118, .4);
@@ -849,3 +850,6 @@ body.managing .col-left { opacity: .6; }
 #dhd-dial:not(:disabled):active { transform: translateY(1px); }
 #dhd-dial:disabled { opacity: .3; cursor: default; box-shadow: none; }
 #dhd-dial:focus-visible { outline: 2px solid var(--green-hot); outline-offset: 2px; }
+
+/* First key of the second row, inset so that row is centred like the first. */
+.dhd-key.row-start { grid-column-start: 2; }

@@ -994,7 +994,9 @@ function dhdArmed() {
 }
 
 function buildDhdKeys() {
-  $dhdKeys.replaceChildren();
+  // Only the keys: DIAL lives in this grid too, and replaceChildren would
+  // take it with them.
+  $dhdKeys.querySelectorAll('.dhd-key').forEach((k) => k.remove());
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const size = 26;
   // Glyph 0 is the point of origin: it closes every address and is never
@@ -1016,6 +1018,9 @@ function buildDhdKeys() {
     drawGlyph(cx, g, size * 0.8, { color: '#4fc3f7', lineWidth: 1.1 });
 
     key.append(c);
+    // Row one takes 20 keys around DIAL; this is the first of row two, and
+    // it starts a column in so the row stays centred under the one above.
+    if (g === 21) key.classList.add('row-start');
     key.addEventListener('click', () => pressGlyph(g));
     $dhdKeys.append(key);
   }
