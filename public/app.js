@@ -1312,6 +1312,27 @@ function toggleAudio() {
  */
 function syncGateAxis() {
   document.documentElement.style.setProperty('--gate-offset', (gate.centerOffset || 0) + 'px');
+
+  // The DHD spans the whole window, but the gate does not sit in the middle
+  // of it: the ring is pushed left to clear the destination boxes, and the
+  // registry takes a column on the right. Line the keys up under the gate
+  // rather than under the window.
+  //
+  // --gate-offset is no use here - it is measured against the canvas, and the
+  // canvas is not centred in the window either.
+  const keys = el('dhd-keys');
+  if (!keys || !gate.canvas) return;
+  const host = keys.parentElement;
+  if (!host) return;
+
+  const canvas = gate.canvas.getBoundingClientRect();
+  const box = host.getBoundingClientRect();
+  // offsetWidth, not the rect: it is the layout width, so it does not shrink
+  // as the transform we are about to set moves the element around.
+  const slack = Math.max(0, (box.width - keys.offsetWidth) / 2);
+  const want = canvas.left + gate.cx - (box.left + box.width / 2);
+  const shift = Math.max(-slack, Math.min(slack, want));
+  keys.style.setProperty('--dhd-shift', Math.round(shift) + 'px');
 }
 gate.onLayout = syncGateAxis;
 

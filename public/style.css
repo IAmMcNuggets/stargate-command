@@ -465,6 +465,9 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
   gap: 3px;
   max-width: calc(1180px * var(--ui));
   margin: 0 auto;
+  /* Nudged onto the gate axis by syncGateAxis, since the gate is not in the
+     middle of the window. Clamped there, so it can never leave its row. */
+  transform: translateX(var(--dhd-shift, 0px));
 }
 
 /* Short and wide, like the telemetry cells that used to sit here. A square
