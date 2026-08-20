@@ -31,10 +31,12 @@ trust a stranger's binary, the source is right here and builds in two commands.
 | <kbd>I</kbd> | open or close the iris |
 | <kbd>M</kbd> | audio on or off |
 | <kbd>F5</kbd> | rescan for new programs |
+| *click glyphs* | dial an address by hand on the DHD along the bottom |
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | summon it from anywhere, rebindable |
 
-Press **MANAGE** to hide entries you never launch, **+ ADD** for anything the
-Start Menu misses: a program, a document, a folder, or a web link.
+Press **MANAGE** to hide entries you never launch, or to give one an address
+of your choosing with **ADDR**. Press **+ ADD** for anything the Start Menu
+misses: a program, a document, a folder, a web link, or another machine.
 
 ## The details I got carried away on
 
@@ -48,6 +50,16 @@ drawn by hand, so the symbols on the ring are the actual constellations.
 **The chevrons light in the right order.** They are not evenly spaced: 1, 2, 3
 down the right, 4, 5, 6 back up the left, 7 at the top. Each symbol spins to
 top dead center to be grabbed, exactly as on screen.
+
+**You can dial by hand.** The row of symbols along the bottom is a DHD. Press
+six of them and hit DIAL, and whatever lives at that address opens. Get it
+wrong and the gate still dials all seven chevrons, forms the wormhole, and
+only then admits there is nothing there.
+
+**Remote machines get nine chevrons.** Add one with a hostname or IP and it
+dials the full nine-chevron sequence before opening Remote Desktop, because
+seven chevrons is a local address and somewhere that is not your own machine
+deserves the long dial.
 
 **The iris works.** It is a real leaf shutter, 22 blades, and the spiral falls
 out of the geometry rather than being drawn on.
@@ -65,17 +77,23 @@ npm start          # run it
 npm run dist       # build the installer
 ```
 
-Needs Node and Windows. There are no runtime dependencies beyond Electron
-itself: the glyphs, the sounds and the PNG decoding are all hand-rolled.
+Windows and Linux both build (`npm run dist` / `npm run dist:linux`). There
+are no runtime dependencies beyond Electron itself: the glyphs, the sounds and
+the PNG decoding are all hand-rolled.
 
 ## Worth knowing
 
 It reads your Start Menu and Desktop shortcuts to build the program list, and
 pulls each program's icon. That is all it looks at.
 
-**It makes no network connections at all.** No telemetry, no update check,
+**It makes no network connections of its own.** No telemetry, no update check,
 nothing phoning home. You can verify that with a firewall, or by reading
 `electron/main.js`. Its settings live in `%APPDATA%\Stargate Command`.
+
+The one exception is the obvious one: a remote destination starts your system's
+Remote Desktop client, and that connects where you told it to. Nothing else
+does. Passwords are never stored or handled here either - the RDP client asks
+for them and your OS keeps them.
 
 ## More
 

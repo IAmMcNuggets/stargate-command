@@ -796,3 +796,22 @@ body.managing .col-left { opacity: .6; }
 /* Assigning an address: the row being edited stays obvious while the eye is
    down at the keyboard. */
 .results.manage li.assigning { border-color: var(--green); background: rgba(0, 230, 118, .12); }
+
+/* ------------------------------------------- remote destinations */
+
+.type-row { display: flex; gap: 6px; }
+.type-row .ghost-btn { flex: 1 1 0; }
+
+.fld-note {
+  font-size: calc(9px * var(--ui));
+  line-height: 1.5;
+  letter-spacing: .06em;
+  color: var(--cyan-dim);
+  border-left: 2px solid var(--cyan-faint);
+  padding-left: 8px;
+  margin-top: -4px;
+}
+
+/* Remote destinations are tagged in the registry, since a nine-chevron dial
+   is a different thing from opening a program. */
+.results li.is-remote { border-left-color: var(--amber); }

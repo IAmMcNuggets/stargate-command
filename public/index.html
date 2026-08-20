@@ -146,19 +146,32 @@
   <form id="add-form" class="add-panel">
     <div class="add-head"><span class="pip amber"></span>NEW DESTINATION</div>
 
+    <div class="fld">
+      <span>TYPE</span>
+      <div class="type-row" role="radiogroup" aria-label="Destination type">
+        <button type="button" id="type-local" class="ghost-btn primary" aria-pressed="true">LOCAL</button>
+        <button type="button" id="type-remote" class="ghost-btn" aria-pressed="false">REMOTE</button>
+      </div>
+    </div>
+
     <label class="fld">
       <span>DESIGNATION</span>
       <input id="add-name" type="text" autocomplete="off" spellcheck="false" placeholder="NAME IN THE REGISTRY">
     </label>
 
     <label class="fld">
-      <span>TARGET</span>
+      <span id="add-target-label">TARGET</span>
       <span class="fld-row">
         <input id="add-target" type="text" autocomplete="off" spellcheck="false"
                placeholder="PROGRAM, FILE, FOLDER OR https://...">
         <button type="button" id="add-browse" class="ghost-btn">BROWSE...</button>
       </span>
     </label>
+
+    <div class="fld-note" id="add-remote-note" hidden>
+      Dials nine chevrons and opens Remote Desktop. You will be asked for your
+      credentials by Windows, not here.
+    </div>
 
     <label class="fld">
       <span>ARGUMENTS <i>optional</i></span>

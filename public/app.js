@@ -70,6 +70,7 @@ const state = {
   audio: localStorage.getItem('sgc.audio') !== 'off',
   irisClosed: localStorage.getItem('sgc.iris') === 'closed',
   manage: false,
+  addRemote: false, // the add form is on its remote tab
   compose: [], // glyphs picked on the DHD, without the point of origin
   assign: null, // the destination whose address is being set, if any
   hotkey: null,
@@ -407,10 +408,17 @@ function renderResults(q) {
 
     const tag = document.createElement('span');
     tag.className = 'tag';
-    tag.textContent = app.use && app.use.count ? '×' + app.use.count : app.kind === 'appx' ? 'PKG' : '';
+    tag.textContent = app.kind === 'remote'
+      ? 'RDP'
+      : app.use && app.use.count
+        ? '×' + app.use.count
+        : app.kind === 'appx'
+          ? 'PKG'
+          : '';
 
     if (app.hidden) li.classList.add('is-hidden');
     if (app.custom) li.classList.add('is-custom');
+    if (app.kind === 'remote') li.classList.add('is-remote');
 
     // Real program icon where we have one; otherwise a small gate sigil, so
     // rows stay aligned instead of jumping when icons arrive.
@@ -498,12 +506,34 @@ async function toggleHidden(app) {
  * custom destinations
  * ================================================================== */
 
+/**
+ * Local or remote. A remote destination takes a host rather than a path, so
+ * the target field changes meaning and BROWSE stops making sense.
+ */
+function setAddType(remote) {
+  state.addRemote = !!remote;
+  el('type-local').classList.toggle('primary', !remote);
+  el('type-local').setAttribute('aria-pressed', String(!remote));
+  el('type-remote').classList.toggle('primary', !!remote);
+  el('type-remote').setAttribute('aria-pressed', String(!!remote));
+  el('add-target-label').textContent = remote ? 'HOST' : 'TARGET';
+  el('add-target').placeholder = remote
+    ? 'HOSTNAME OR IP, E.G. 192.168.1.50'
+    : 'PROGRAM, FILE, FOLDER OR https://...';
+  el('add-browse').hidden = !!remote;
+  el('add-remote-note').hidden = !remote;
+  // Arguments belong to a program, not to a host.
+  el('add-args').closest('.fld').hidden = !!remote;
+  el('add-err').textContent = '';
+}
+
 function openAddForm() {
   if (!backend.isDesktop) return;
   el('add-name').value = '';
   el('add-target').value = '';
   el('add-args').value = '';
   el('add-err').textContent = '';
+  setAddType(false);
   el('add-overlay').hidden = false;
   el('add-name').focus();
 }
@@ -537,10 +567,15 @@ async function submitAddForm() {
   const entry = {
     name: el('add-name').value.trim(),
     target: el('add-target').value.trim(),
-    args: el('add-args').value.trim(),
+    args: state.addRemote ? '' : el('add-args').value.trim(),
+    remote: !!state.addRemote,
   };
   if (!entry.name) return (el('add-err').textContent = 'A DESIGNATION IS REQUIRED');
-  if (!entry.target) return (el('add-err').textContent = 'A TARGET IS REQUIRED');
+  if (!entry.target) {
+    return (el('add-err').textContent = state.addRemote
+      ? 'A HOST IS REQUIRED'
+      : 'A TARGET IS REQUIRED');
+  }
 
   try {
     const data = await backend.addCustom(entry);
@@ -604,12 +639,16 @@ function updateSelection() {
   if (app) {
     state.address = addressForApp(app);
     gate.setSlotCount(state.address.length);
+    // Chevrons 8 and 9 go to standby the moment a nine-chevron destination is
+    // selected, rather than waiting until the dial is already under way.
+    if (!state.dialing) resetChevronList();
     renderAddressStrip(state.address);
     $roDest.textContent = app.name.toUpperCase();
     if ($caption) $caption.textContent = state.address.map((g) => GLYPH_NAMES[g]).join(' · ');
   } else {
     state.address = null;
     gate.setSlotCount(7);
+    if (!state.dialing) resetChevronList();
     renderAddressStrip(null);
     $roDest.textContent = '— NO TARGET LOCKED —';
     if ($caption) $caption.textContent = 'NO TARGET LOCKED';
@@ -1420,6 +1459,8 @@ document.addEventListener('keydown', (e) => {
 el('btn-hotkey').addEventListener('click', beginHotkeyCapture);
 el('btn-manage').addEventListener('click', toggleManage);
 el('btn-add').addEventListener('click', openAddForm);
+el('type-local').addEventListener('click', () => setAddType(false));
+el('type-remote').addEventListener('click', () => setAddType(true));
 el('add-cancel').addEventListener('click', closeAddForm);
 el('add-browse').addEventListener('click', browseForTarget);
 el('add-form').addEventListener('submit', (e) => {

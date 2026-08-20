@@ -13,6 +13,7 @@ const path = require('path');
 const { createCatalog } = require('../lib/catalog');
 const { launchApp } = require('../lib/launcher');
 const { createSettings } = require('../lib/settings');
+const { parseHost } = require('../lib/remote');
 const { createAppxActivator } = require('../lib/appx-activator');
 const { createIconStore } = require('../lib/icons');
 
@@ -247,9 +248,15 @@ ipcMain.handle('catalog:addCustom', (_e, entry) => {
   const name = String((entry && entry.name) || '').trim();
   if (!name) throw new Error('a designation is required');
 
-  const spec = classifyTarget(entry && entry.target);
-  if (spec.kind !== 'url' && !require('fs').existsSync(spec.launchPath)) {
-    throw new Error('that target does not exist');
+  let spec;
+  if (entry && entry.remote) {
+    const { host, port, spec: hostSpec } = parseHost(entry.target);
+    spec = { kind: 'remote', launchPath: hostSpec, target: hostSpec, host, port };
+  } else {
+    spec = classifyTarget(entry && entry.target);
+    if (spec.kind !== 'url' && !require('fs').existsSync(spec.launchPath)) {
+      throw new Error('that target does not exist');
+    }
   }
 
   const record = {
