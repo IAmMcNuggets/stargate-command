@@ -183,7 +183,11 @@ function syncCustom() {
 }
 
 const clientList = () =>
-  catalog.toClientList({ hidden: settings.hiddenSet(), icon: (k) => icons.get(k) });
+  catalog.toClientList({
+    hidden: settings.hiddenSet(),
+    icon: (k) => icons.get(k),
+    address: settings.addressMap(),
+  });
 
 /*
  * Icon extraction takes a couple of seconds for a full catalog, so it never
@@ -217,6 +221,25 @@ ipcMain.handle('catalog:hide', (_e, id) => {
   const entry = catalog.apps[Number(id)];
   if (!entry) throw new Error('unknown address');
   settings.hide(entry.key);
+  return clientList();
+});
+
+/*
+ * Addresses are set by catalog id, never by key, so the renderer still cannot
+ * name a destination it did not get from us. The glyphs themselves are checked
+ * in lib/settings.js, which is the trust boundary for anything stored.
+ */
+ipcMain.handle('settings:setAddress', (_e, id, glyphs) => {
+  const entry = catalog.apps[Number(id)];
+  if (!entry) throw new Error('unknown address');
+  if (!settings.setAddress(entry.key, glyphs)) throw new Error('not a valid gate address');
+  return clientList();
+});
+
+ipcMain.handle('settings:clearAddress', (_e, id) => {
+  const entry = catalog.apps[Number(id)];
+  if (!entry) throw new Error('unknown address');
+  settings.clearAddress(entry.key);
   return clientList();
 });
 

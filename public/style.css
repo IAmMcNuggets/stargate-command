@@ -669,8 +669,8 @@ body.dialing #search { opacity: .45; }
 }
 .tickbox.on { background: var(--danger); border-color: var(--danger); color: #fff; }
 
-.results.manage li { grid-template-columns: auto auto 1fr auto; cursor: pointer; }
-.results.manage li.is-custom { grid-template-columns: auto auto 1fr auto auto; }
+.results.manage li { grid-template-columns: auto auto 1fr auto auto; cursor: pointer; }
+.results.manage li.is-custom { grid-template-columns: auto auto 1fr auto auto auto; }
 .results.manage li:hover { background: rgba(255, 82, 82, .16); border-color: rgba(255, 82, 82, .5); }
 
 .results li.is-hidden { opacity: .5; border-left-color: var(--cyan-faint); }
@@ -778,3 +778,21 @@ body.managing .col-left { opacity: .6; }
   cursor: pointer;
 }
 .row-del:hover { background: rgba(255, 82, 82, .3); color: #fff; }
+
+.row-addr {
+  font-family: var(--mono);
+  font-size: calc(9px * var(--ui));
+  line-height: 1;
+  padding: calc(2px * var(--ui)) calc(5px * var(--ui));
+  color: var(--cyan);
+  background: transparent;
+  border: 1px solid var(--cyan-faint);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.row-addr:hover { background: rgba(41, 182, 246, .28); color: #fff; border-color: var(--cyan); }
+.row-addr.set { color: var(--green); border-color: rgba(0, 230, 118, .45); }
+
+/* Assigning an address: the row being edited stays obvious while the eye is
+   down at the keyboard. */
+.results.manage li.assigning { border-color: var(--green); background: rgba(0, 230, 118, .12); }

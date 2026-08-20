@@ -71,6 +71,7 @@ const state = {
   irisClosed: localStorage.getItem('sgc.iris') === 'closed',
   manage: false,
   compose: [], // glyphs picked on the DHD, without the point of origin
+  assign: null, // the destination whose address is being set, if any
   hotkey: null,
   capturingHotkey: false,
 };
@@ -124,6 +125,9 @@ const backend = {
   unhide: (id) => (HOST ? HOST.unhide(id) : Promise.reject(new Error('desktop only'))),
   getSettings: () => (HOST ? HOST.getSettings() : Promise.resolve({ hotkey: null })),
   setHotkey: (a) => (HOST ? HOST.setHotkey(a) : Promise.reject(new Error('desktop only'))),
+  setAddress: (id, glyphs) =>
+    HOST ? HOST.setAddress(id, glyphs) : Promise.reject(new Error('desktop only')),
+  clearAddress: (id) => (HOST ? HOST.clearAddress(id) : Promise.reject(new Error('desktop only'))),
   addCustom: (e) => (HOST ? HOST.addCustom(e) : Promise.reject(new Error('desktop only'))),
   removeCustom: (id) => (HOST ? HOST.removeCustom(id) : Promise.reject(new Error('desktop only'))),
   pickTarget: () => (HOST ? HOST.pickTarget() : Promise.resolve(null)),
@@ -429,6 +433,19 @@ function renderResults(q) {
       box.textContent = app.hidden ? '✕' : '';
       li.append(box, ico, nm, tag);
 
+      const addr = document.createElement('button');
+      addr.className = 'row-addr' + (app.address ? ' set' : '');
+      addr.textContent = 'ADDR';
+      addr.title = app.address
+        ? 'Change this address, or reset it to the derived one'
+        : 'Give this destination an address of your choosing';
+      addr.addEventListener('click', (e) => {
+        e.stopPropagation();
+        beginAssign(app);
+      });
+      li.append(addr);
+      if (state.assign && state.assign.key === app.key) li.classList.add('assigning');
+
       // A hand-added entry can be removed outright; hiding one would leave it
       // sitting in settings forever with no way back to it.
       if (app.custom) {
@@ -563,7 +580,10 @@ function applyHiddenLabel() {
 }
 
 function toggleManage() {
-  // The keyboard is inert while the registry is open for editing.
+  // The keyboard is inert while the registry is open for editing, unless an
+  // address is being assigned.
+  state.assign = null;
+  state.compose = [];
   setTimeout(renderDhd, 0);
   if (!backend.isDesktop) return;
   state.manage = !state.manage;
@@ -656,7 +676,10 @@ async function shutWormhole(manual) {
  * local gets six and seven chevrons.
  */
 function addressForApp(app) {
-  if (Array.isArray(app.address) && app.address.length) return app.address;
+  // An override stores only the constellations the user chose. The point of
+  // origin is not theirs to pick and is appended here, exactly as addressFor
+  // does, so both paths return a whole dialable address.
+  if (Array.isArray(app.address) && app.address.length) return app.address.concat([0]);
   return addressFor(app.key + '|' + app.name, app.kind === 'remote' ? 8 : 6);
 }
 
@@ -871,6 +894,7 @@ const $dhdTray = el('dhd-tray');
 const $dhdTitle = el('dhd-title');
 const $dhdHint = el('dhd-hint');
 const $dhdDial = el('dhd-dial');
+const $dhdReset = el('dhd-reset');
 const $dhdClear = el('dhd-clear');
 
 const DHD_CELL = 'calc(19px * var(--ui))';
@@ -897,12 +921,18 @@ function rebuildAddressIndex() {
 
 /** Constellations wanted before the address is complete; the origin is extra. */
 function composeNeeds() {
-  return 6;
+  // Nine chevrons for a remote machine, seven for anything local.
+  return state.assign && state.assign.kind === 'remote' ? 8 : 6;
 }
 
-/** The keyboard is live unless a dial is running or the registry is being edited. */
+/**
+ * The keyboard is live unless a dial is running, or the registry is open for
+ * editing without an address being assigned.
+ */
 function dhdArmed() {
-  return !state.dialing && !state.manage;
+  if (state.dialing) return false;
+  if (state.manage && !state.assign) return false;
+  return true;
 }
 
 function buildDhdKeys() {
@@ -963,15 +993,22 @@ function renderDhd() {
 
   const armed = dhdArmed();
   const complete = state.compose.length === need;
+  const assigning = !!state.assign;
   $dhd.classList.toggle('armed', armed);
   $dhdDial.disabled = !complete || !armed;
   $dhdClear.disabled = !state.compose.length || !armed;
+  $dhdDial.textContent = assigning ? 'SAVE' : 'DIAL';
+  $dhdReset.hidden = !assigning;
+  $dhdTitle.classList.toggle('assigning', assigning);
+  $dhdTitle.firstChild.textContent = assigning
+    ? 'SET ADDRESS — ' + state.assign.name.toUpperCase()
+    : 'MANUAL DIAL';
 
   for (const key of $dhdKeys.children) {
     key.classList.toggle('spent', state.compose.includes(Number(key.dataset.g)));
   }
 
-  if (!armed) $dhdHint.textContent = state.dialing ? 'GATE ENGAGED' : 'REGISTRY LOCKED';
+  if (!armed) $dhdHint.textContent = state.dialing ? 'GATE ENGAGED' : 'PRESS ADDR ON A ROW TO SET ONE';
   else if (complete) $dhdHint.textContent = state.compose.map((g) => GLYPH_NAMES[g]).join(' · ');
   else $dhdHint.textContent = 'SELECT ' + (need - state.compose.length) + ' MORE';
 }
@@ -990,7 +1027,66 @@ async function dialComposed() {
   if (found) clearCompose();
 }
 
-$dhdDial.addEventListener('click', dialComposed);
+/* ---------------- assigning an address to a destination ---------------- */
+
+function beginAssign(app) {
+  state.assign = app;
+  // Start from whatever it dials today, so setting one symbol does not mean
+  // re-entering the other five.
+  state.compose = addressForApp(app).slice(0, composeNeeds());
+  renderResults($search.value.trim());
+  renderDhd();
+}
+
+function cancelAssign() {
+  if (!state.assign) return false;
+  state.assign = null;
+  state.compose = [];
+  renderResults($search.value.trim());
+  renderDhd();
+  return true;
+}
+
+async function saveAssign() {
+  const app = state.assign;
+  if (!app || state.compose.length !== composeNeeds()) return;
+  try {
+    const data = await backend.setAddress(app.id, state.compose);
+    state.apps = data.apps;
+    rebuildAddressIndex();
+    log('ADDRESS SET · ' + app.name.toUpperCase(), 'ok');
+  } catch (e) {
+    log('ADDRESS REFUSED — ' + cleanError(e), 'err');
+    sfx.error();
+    return;
+  }
+  state.assign = null;
+  state.compose = [];
+  runSearch();
+  renderDhd();
+}
+
+async function resetAssign() {
+  const app = state.assign;
+  if (!app) return;
+  try {
+    const data = await backend.clearAddress(app.id);
+    state.apps = data.apps;
+    rebuildAddressIndex();
+    log('ADDRESS RESET · ' + app.name.toUpperCase());
+  } catch (e) {
+    log('COULD NOT RESET ADDRESS — ' + cleanError(e), 'err');
+    sfx.error();
+    return;
+  }
+  state.assign = null;
+  state.compose = [];
+  runSearch();
+  renderDhd();
+}
+
+$dhdReset.addEventListener('click', resetAssign);
+$dhdDial.addEventListener('click', () => (state.assign ? saveAssign() : dialComposed()));
 $dhdClear.addEventListener('click', clearCompose);
 
 // Clicking a filled slot takes that symbol back out.
@@ -1233,6 +1329,7 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === 'Escape') {
     e.preventDefault();
+    if (cancelAssign()) return;
     if (abortDial()) return;
     if (wormholeOpen()) {
       shutWormhole(true);

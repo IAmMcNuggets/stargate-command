@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('gateHost', {
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setHotkey: (accelerator) => ipcRenderer.invoke('settings:setHotkey', accelerator),
+  setAddress: (id, glyphs) => ipcRenderer.invoke('settings:setAddress', id, glyphs),
+  clearAddress: (id) => ipcRenderer.invoke('settings:clearAddress', id),
 
   minimize: () => ipcRenderer.invoke('window:minimize'),
   close: () => ipcRenderer.invoke('window:close'),
