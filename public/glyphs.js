@@ -259,9 +259,15 @@ function drawGlyph(ctx, index, size, opts) {
 
 /**
  * Deterministic gate address for a destination.
- * Six constellation glyphs plus the Point of Origin, exactly like a real dial.
+ *
+ * `count` constellation glyphs plus the Point of Origin, exactly like a real
+ * dial. Six is a seven-chevron address, somewhere in this galaxy. Eight is a
+ * nine-chevron address, which is what remote machines get.
+ *
+ * Glyphs are drawn without replacement, so an address never repeats a symbol.
  */
-function addressFor(seedString) {
+function addressFor(seedString, count) {
+  const want = Math.max(1, Math.min(GLYPH_COUNT - 1, count || 6));
   let h = 2166136261 >>> 0;
   const s = String(seedString);
   for (let i = 0; i < s.length; i++) {
@@ -272,7 +278,7 @@ function addressFor(seedString) {
   const pool = [];
   for (let i = 1; i < GLYPH_COUNT; i++) pool.push(i);
   const address = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < want; i++) {
     const pick = Math.floor(rnd() * pool.length);
     address.push(pool.splice(pick, 1)[0]);
   }

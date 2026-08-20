@@ -115,9 +115,11 @@ class Gate {
     this.centerGlyph = null;
     this.centerAlpha = 0;
 
-    // The seven destination boxes down the right, and the symbol in flight
-    // between the gate center and its box.
-    this.slots = new Array(7).fill(null);
+    // The destination boxes down the right, and the symbol in flight between
+    // the gate center and its box. Seven boxes for an ordinary address, nine
+    // when a remote destination lights the two spare chevrons as well.
+    this.slotCount = 7;
+    this.slots = new Array(this.slotCount).fill(null);
     this.flight = null; // { glyph, slot, t }
 
     this.horizon = 0; // 0 closed .. 1 fully open
@@ -169,7 +171,10 @@ class Gate {
     this.cy = h / 2;
     this.R = Math.min(usableW, h) / 2 - Math.min(usableW, h) * 0.055;
 
-    this.slotSize = Math.min(gutter * 0.72, h * 0.105);
+    // 0.735 of the height is what seven boxes at the old fixed size came to.
+    // Dividing it keeps the column the same length whether there are seven or
+    // nine, shrinking the boxes instead of running off the bottom.
+    this.slotSize = Math.min(gutter * 0.72, (h * 0.735) / this.slotCount);
     this.slotGap = this.slotSize * 0.28;
     this.slotDX = usableW + gutter / 2 - this.cx;
     this._chevCache = null;
@@ -182,12 +187,25 @@ class Gate {
 
   /* ---------------- public animation API ---------------- */
 
+  /**
+   * How many destination boxes to show — the length of the address about to be
+   * dialled. Re-runs layout, because the boxes shrink to keep the column the
+   * same length.
+   */
+  setSlotCount(n) {
+    const count = Math.max(1, Math.min(9, n || 7));
+    if (count === this.slotCount) return;
+    this.slotCount = count;
+    this.slots = new Array(count).fill(null);
+    this._resize();
+  }
+
   reset() {
     this.chevrons.clear();
     this.activeGlyph = null;
     this.centerGlyph = null;
     this.centerAlpha = 0;
-    this.slots = new Array(7).fill(null);
+    this.slots = new Array(this.slotCount).fill(null);
     this.flight = null;
     this.topGrab = 0;
     this.horizon = 0;
@@ -792,14 +810,14 @@ class Gate {
   _slotRect(i) {
     const s = this.slotSize;
     const pitch = s + this.slotGap;
-    const total = pitch * 7 - this.slotGap;
+    const total = pitch * this.slotCount - this.slotGap;
     return { x: this.slotDX, y: -total / 2 + i * pitch + s / 2, s };
   }
 
-  /** The seven destination boxes, filling in as the address is dialled. */
+  /** The destination boxes, filling in as the address is dialled. */
   _drawSlots(ctx, R) {
     if (!this.showSlots) return;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < this.slotCount; i++) {
       const { x, y, s } = this._slotRect(i);
       const filled = this.slots[i] !== null;
 

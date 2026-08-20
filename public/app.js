@@ -195,7 +195,7 @@ function buildChevronList() {
     label.textContent = 'CHEVRON ' + i;
     const st = document.createElement('span');
     st.className = 'state';
-    st.textContent = i <= 7 ? 'STANDBY' : 'INACTIVE';
+    st.textContent = i <= activeChevrons() ? 'STANDBY' : 'INACTIVE';
     li.append(mark, label, st);
     $chevrons.append(li);
   }
@@ -210,18 +210,39 @@ function setChevron(n, status, cls) {
   setTimeout(() => li.classList.remove('active'), 500);
 }
 
+/**
+ * How many chevrons the current destination needs. Seven for anything local,
+ * nine for a remote machine — the two spare chevrons at the bottom of the ring
+ * stay INACTIVE until something actually uses them.
+ */
+function activeChevrons() {
+  return state.address ? state.address.length : 7;
+}
+
 function resetChevronList() {
+  const active = activeChevrons();
   $chevrons.querySelectorAll('li').forEach((li) => {
     li.className = '';
     const n = Number(li.dataset.n);
-    li.querySelector('.state').textContent = n <= 7 ? 'STANDBY' : 'INACTIVE';
+    li.querySelector('.state').textContent = n <= active ? 'STANDBY' : 'INACTIVE';
   });
 }
 
-function renderAddressStrip(address) {
-  $addressStrip.replaceChildren();
+/**
+ * Render an address as a row of glyph cells.
+ *
+ * Shared by the LAST DIALED ADDRESS panel and the manual-dial tray, so it takes
+ * its container, and sizes its grid to however many symbols the address has
+ * rather than assuming seven.
+ */
+function renderAddressStrip(address, opts) {
+  const o = opts || {};
+  const host = o.container || $addressStrip;
+  const slots = o.slots || (address && address.length) || 7;
+  host.replaceChildren();
+  host.style.gridTemplateColumns = 'repeat(' + slots + ', 1fr)';
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  (address || new Array(7).fill(null)).forEach((g, i) => {
+  (address || new Array(slots).fill(null)).forEach((g, i) => {
     const cell = document.createElement('div');
     cell.className = 'cell';
     cell.dataset.i = String(i);
@@ -237,7 +258,7 @@ function renderAddressStrip(address) {
       cell.append(c);
       cell.title = GLYPH_NAMES[g];
     }
-    $addressStrip.append(cell);
+    host.append(cell);
   });
 }
 
@@ -558,12 +579,14 @@ function updateSelection() {
   const app = state.view[state.sel];
   const $caption = el('addr-caption');
   if (app) {
-    state.address = addressFor(app.key + '|' + app.name);
+    state.address = addressForApp(app);
+    gate.setSlotCount(state.address.length);
     renderAddressStrip(state.address);
     $roDest.textContent = app.name.toUpperCase();
     if ($caption) $caption.textContent = state.address.map((g) => GLYPH_NAMES[g]).join(' · ');
   } else {
     state.address = null;
+    gate.setSlotCount(7);
     renderAddressStrip(null);
     $roDest.textContent = '— NO TARGET LOCKED —';
     if ($caption) $caption.textContent = 'NO TARGET LOCKED';
@@ -622,6 +645,18 @@ async function shutWormhole(manual) {
   clearBanner();
 }
 
+/**
+ * The address for a destination: a user-set override when there is one,
+ * otherwise derived from the name so it stays the same forever.
+ *
+ * Remote machines get eight constellations and a nine-chevron dial; everything
+ * local gets six and seven chevrons.
+ */
+function addressForApp(app) {
+  if (Array.isArray(app.address) && app.address.length) return app.address;
+  return addressFor(app.key + '|' + app.name, app.kind === 'remote' ? 8 : 6);
+}
+
 async function dialSelected(forceFull) {
   if (state.dialing || state.manage) return;
   const app = state.view[state.sel];
@@ -630,13 +665,24 @@ async function dialSelected(forceFull) {
     log('NO DESTINATION SELECTED', 'err');
     return;
   }
+  return dialAddress(app, state.address || addressForApp(app), forceFull);
+}
 
+/**
+ * Dial `address` and launch `app` at the kawoosh.
+ *
+ * The chevron count comes from the address rather than a constant: seven for a
+ * local destination, nine for a remote one. Every symbol but the last is a
+ * constellation, and the last is always the point of origin.
+ */
+async function dialAddress(app, address, forceFull) {
+  if (state.dialing || state.manage) return;
   const speed = SPEEDS[forceFull ? 'SHOW' : state.speed] || SPEEDS.NORMAL;
-  const address = state.address || addressFor(app.key + '|' + app.name);
 
   clearWormholeTimers();
   state.dialing = true;
   document.body.classList.add('dialing');
+  gate.setSlotCount(address.length);
   gate.reset();
   resetChevronList();
   renderAddressStrip(address);
@@ -646,11 +692,11 @@ async function dialSelected(forceFull) {
   banner('ENCODING DESTINATION…');
 
   try {
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < address.length; i++) {
       if (!state.dialing) break; // aborted
       const glyph = address[i];
       const chevron = i + 1;
-      const final = i === 6;
+      const final = i === address.length - 1;
 
       if (speed.spin) banner('INNER TRACK — ' + GLYPH_NAMES[glyph]);
 
@@ -676,8 +722,8 @@ async function dialSelected(forceFull) {
 
       if (final) {
         setChevron(chevron, 'LOCKED', 'locked');
-        banner('CHEVRON SEVEN — LOCKED', 'lock');
-        log('CHEVRON SEVEN LOCKED · ' + GLYPH_NAMES[glyph], 'lock');
+        banner('CHEVRON ' + NUMBER_WORD[chevron] + ' — LOCKED', 'lock');
+        log('CHEVRON ' + NUMBER_WORD[chevron] + ' LOCKED · ' + GLYPH_NAMES[glyph], 'lock');
       } else {
         setChevron(chevron, 'ENCODED', 'encoded');
         banner('CHEVRON ' + NUMBER_WORD[chevron] + ' — ENCODED', 'lock');
