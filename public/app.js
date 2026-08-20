@@ -1033,7 +1033,7 @@ function pressGlyph(g) {
   if (state.compose.includes(g)) return;
   if (state.compose.length >= composeNeeds()) return;
   state.compose.push(g);
-  sfx.chevronLight();
+  sfx.dhdPress();
   renderDhd();
 }
 
@@ -1152,7 +1152,11 @@ async function resetAssign() {
 }
 
 $dhdReset.addEventListener('click', resetAssign);
-$dhdDial.addEventListener('click', () => (state.assign ? saveAssign() : dialComposed()));
+$dhdDial.addEventListener('click', () => {
+  // The big one in the middle is a key on the same device.
+  sfx.dhdPress();
+  return state.assign ? saveAssign() : dialComposed();
+});
 $dhdClear.addEventListener('click', clearCompose);
 
 // Clicking a filled slot takes that symbol back out.

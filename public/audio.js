@@ -17,6 +17,7 @@
 
 const SFX = {
   chevronLock: 'sfx/chevron-lock.mp3',
+  dhdPress: 'sfx/dhd-press.mp3',
   ringSpin: 'sfx/ring-spin.mp3',
   wormholeOpen: 'sfx/wormhole-open.mp3',
   wormholeClose: 'sfx/wormhole-close.mp3',
@@ -405,6 +406,15 @@ class GateAudio {
    */
   wormholeClose() {
     this._play('wormholeClose', 0.9);
+  }
+
+  /**
+   * A key going down on the DHD. Falls back to the blip these made before,
+   * so the keyboard still answers a press without the recording.
+   */
+  dhdPress() {
+    if (this._play('dhdPress', 0.85)) return;
+    this.chevronLight();
   }
 
   /** The trinium blades. Falls back to the chevron clunk, as it used to. */
