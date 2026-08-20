@@ -107,12 +107,17 @@
     </aside>
   </main>
 
-  <!-- code strip + data tables, straight off the reference screen -->
-  <div class="code-strip" id="code-strip" aria-hidden="true"></div>
-
-  <section class="data-tables" aria-hidden="true">
-    <div class="dt-head">MACRO MC.002548S<span class="dots">°°</span></div>
-    <div class="dt-grid" id="dt-grid"></div>
+  <!-- The DHD. Stands where the decorative telemetry tables used to: those
+       were filler, and this is the same instrument look doing something. -->
+  <section class="dhd" id="dhd">
+    <div class="dhd-bar">
+      <span class="dhd-title" id="dhd-title">MANUAL DIAL<span class="dots">°°</span></span>
+      <div class="address-strip dhd-tray" id="dhd-tray"></div>
+      <span class="dhd-hint" id="dhd-hint"></span>
+      <button type="button" id="dhd-clear" class="ghost-btn">CLEAR</button>
+      <button type="button" id="dhd-dial" class="ghost-btn primary" disabled>DIAL</button>
+    </div>
+    <div class="dhd-keys" id="dhd-keys" role="group" aria-label="Gate symbols"></div>
   </section>
 
   <footer class="strip-bottom">

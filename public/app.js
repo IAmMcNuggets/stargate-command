@@ -70,6 +70,7 @@ const state = {
   audio: localStorage.getItem('sgc.audio') !== 'off',
   irisClosed: localStorage.getItem('sgc.iris') === 'closed',
   manage: false,
+  compose: [], // glyphs picked on the DHD, without the point of origin
   hotkey: null,
   capturingHotkey: false,
 };
@@ -240,7 +241,7 @@ function renderAddressStrip(address, opts) {
   const host = o.container || $addressStrip;
   const slots = o.slots || (address && address.length) || 7;
   host.replaceChildren();
-  host.style.gridTemplateColumns = 'repeat(' + slots + ', 1fr)';
+  host.style.gridTemplateColumns = 'repeat(' + slots + ', ' + (o.cellSize || '1fr') + ')';
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   (address || new Array(slots).fill(null)).forEach((g, i) => {
     const cell = document.createElement('div');
@@ -562,6 +563,8 @@ function applyHiddenLabel() {
 }
 
 function toggleManage() {
+  // The keyboard is inert while the registry is open for editing.
+  setTimeout(renderDhd, 0);
   if (!backend.isDesktop) return;
   state.manage = !state.manage;
   applyHiddenLabel();
@@ -682,6 +685,7 @@ async function dialAddress(app, address, forceFull) {
   clearWormholeTimers();
   state.dialing = true;
   document.body.classList.add('dialing');
+  renderDhd();
   gate.setSlotCount(address.length);
   gate.reset();
   resetChevronList();
@@ -751,13 +755,17 @@ async function dialAddress(app, address, forceFull) {
     const blocked = state.irisClosed;
     // Capture the failure rather than letting it reject unhandled — the
     // promise is created here but not awaited until the kawoosh finishes.
-    let launchError = null;
-    const launching = blocked
-      ? Promise.resolve(null)
-      : Promise.resolve(backend.launch(app.id)).catch((e) => {
-          launchError = e;
-          return null;
-        });
+    // A hand-dialled address that matches nothing is not an error until the
+    // wormhole should have formed. The gate commits to the whole sequence.
+    const noSuchAddress = !!app.missing;
+    let launchError = noSuchAddress ? new Error('no such address') : null;
+    const launching =
+      blocked || noSuchAddress
+        ? Promise.resolve(null)
+        : Promise.resolve(backend.launch(app.id)).catch((e) => {
+            launchError = e;
+            return null;
+          });
 
     await gate.openWormhole(speed.kawoosh);
     sfx.startHum();
@@ -771,8 +779,8 @@ async function dialAddress(app, address, forceFull) {
     } else if (launchError) {
       // The program did not start. Collapse the gate rather than sitting
       // there claiming an established wormhole for a minute.
-      log('WORMHOLE COULD NOT BE ESTABLISHED — ' + cleanError(launchError), 'err');
-      banner('WORMHOLE COULD NOT BE ESTABLISHED', 'err');
+      log(noSuchAddress ? 'NO SUCH ADDRESS' : 'WORMHOLE COULD NOT BE ESTABLISHED — ' + cleanError(launchError), 'err');
+      banner(noSuchAddress ? 'NO SUCH ADDRESS' : 'WORMHOLE COULD NOT BE ESTABLISHED', 'err');
       setGateStatus('FAILED', 'hot');
       sfx.error();
       sfx.stopHum();
@@ -780,6 +788,7 @@ async function dialAddress(app, address, forceFull) {
       await gate.closeWormhole(420);
       state.dialing = false;
       document.body.classList.remove('dialing');
+      renderDhd();
       gate.reset();
       resetChevronList();
       renderAddressStrip(state.address);
@@ -802,6 +811,7 @@ async function dialAddress(app, address, forceFull) {
     await sleep(speed.hold);
     state.dialing = false;
     document.body.classList.remove('dialing');
+    renderDhd();
     $search.focus();
     beginWormholeHold();
     return;
@@ -819,6 +829,7 @@ async function dialAddress(app, address, forceFull) {
     if (state.dialing) {
       state.dialing = false;
       document.body.classList.remove('dialing');
+      renderDhd();
       gate.reset();
       resetChevronList();
       renderAddressStrip(state.address);
@@ -843,11 +854,156 @@ function abortDial() {
     gate.reset();
     resetChevronList();
     document.body.classList.remove('dialing');
+    renderDhd();
     setGateStatus('IDLE', '');
     clearBanner();
   }, 650);
   return true;
 }
+
+/* ================================================================== *
+ * the DHD — dialing an address by hand
+ * ================================================================== */
+
+const $dhd = el('dhd');
+const $dhdKeys = el('dhd-keys');
+const $dhdTray = el('dhd-tray');
+const $dhdTitle = el('dhd-title');
+const $dhdHint = el('dhd-hint');
+const $dhdDial = el('dhd-dial');
+const $dhdClear = el('dhd-clear');
+
+const DHD_CELL = 'calc(19px * var(--ui))';
+
+/*
+ * Address -> destination, so an address dialled by hand can find what it
+ * belongs to. Six distinct glyphs drawn from 38 with the order significant is
+ * 2.76 billion combinations against a few hundred programs, so collisions are
+ * not a practical concern.
+ *
+ * Rebuilt whenever the catalog changes, including when icons land in the
+ * background — miss that and manual dialing quietly stops matching.
+ */
+const addressIndex = new Map();
+
+function addressKey(address) {
+  return address.join('.');
+}
+
+function rebuildAddressIndex() {
+  addressIndex.clear();
+  for (const app of state.apps) addressIndex.set(addressKey(addressForApp(app)), app);
+}
+
+/** Constellations wanted before the address is complete; the origin is extra. */
+function composeNeeds() {
+  return 6;
+}
+
+/** The keyboard is live unless a dial is running or the registry is being edited. */
+function dhdArmed() {
+  return !state.dialing && !state.manage;
+}
+
+function buildDhdKeys() {
+  $dhdKeys.replaceChildren();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const size = 26;
+  // Glyph 0 is the point of origin: it closes every address and is never
+  // chosen, so it is not offered as a key.
+  for (let g = 1; g < GLYPH_COUNT; g++) {
+    const key = document.createElement('button');
+    key.type = 'button';
+    key.className = 'dhd-key';
+    key.dataset.g = String(g);
+    key.title = GLYPH_NAMES[g];
+    key.setAttribute('aria-label', GLYPH_NAMES[g]);
+
+    const c = document.createElement('canvas');
+    c.width = size * dpr;
+    c.height = size * dpr;
+    const cx = c.getContext('2d');
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cx.translate(size / 2, size / 2);
+    drawGlyph(cx, g, size * 0.8, { color: '#4fc3f7', lineWidth: 1.1 });
+
+    key.append(c);
+    key.addEventListener('click', () => pressGlyph(g));
+    $dhdKeys.append(key);
+  }
+}
+
+function pressGlyph(g) {
+  if (!dhdArmed()) return;
+  // A gate address never repeats a symbol, so a second press would only ever
+  // build an address that cannot match anything.
+  if (state.compose.includes(g)) return;
+  if (state.compose.length >= composeNeeds()) return;
+  state.compose.push(g);
+  sfx.chevronLight();
+  renderDhd();
+}
+
+function clearCompose() {
+  if (!state.compose.length) return;
+  state.compose = [];
+  renderDhd();
+}
+
+function renderDhd() {
+  const need = composeNeeds();
+  const cells = state.compose.slice();
+  while (cells.length < need) cells.push(null);
+  cells.push(0); // the point of origin closes every address
+
+  renderAddressStrip(cells, { container: $dhdTray, slots: need + 1, cellSize: DHD_CELL });
+  $dhdTray.querySelectorAll('.cell').forEach((cell, i) => {
+    if (cells[i] !== null && cells[i] !== undefined) cell.classList.add('on');
+  });
+
+  const armed = dhdArmed();
+  const complete = state.compose.length === need;
+  $dhd.classList.toggle('armed', armed);
+  $dhdDial.disabled = !complete || !armed;
+  $dhdClear.disabled = !state.compose.length || !armed;
+
+  for (const key of $dhdKeys.children) {
+    key.classList.toggle('spent', state.compose.includes(Number(key.dataset.g)));
+  }
+
+  if (!armed) $dhdHint.textContent = state.dialing ? 'GATE ENGAGED' : 'REGISTRY LOCKED';
+  else if (complete) $dhdHint.textContent = state.compose.map((g) => GLYPH_NAMES[g]).join(' · ');
+  else $dhdHint.textContent = 'SELECT ' + (need - state.compose.length) + ' MORE';
+}
+
+async function dialComposed() {
+  if (!dhdArmed() || state.compose.length !== composeNeeds()) return;
+  const address = state.compose.concat([0]);
+  const found = addressIndex.get(addressKey(address));
+
+  // Nothing at this address still dials. The gate commits to the sequence and
+  // fails at the kawoosh, which is both truer to the show and more fun.
+  const target = found || { id: null, key: '', name: 'UNKNOWN ADDRESS', kind: 'unknown', missing: true };
+
+  state.address = address;
+  await dialAddress(target, address, false);
+  if (found) clearCompose();
+}
+
+$dhdDial.addEventListener('click', dialComposed);
+$dhdClear.addEventListener('click', clearCompose);
+
+// Clicking a filled slot takes that symbol back out.
+$dhdTray.addEventListener('click', (e) => {
+  if (!dhdArmed()) return;
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  const i = Number(cell.dataset.i);
+  if (i >= 0 && i < state.compose.length) {
+    state.compose.splice(i, 1);
+    renderDhd();
+  }
+});
 
 /* ================================================================== *
  * catalog
@@ -859,6 +1015,7 @@ async function loadCatalog(rescan) {
   try {
     const data = rescan ? await backend.rescan() : await backend.getCatalog();
     state.apps = data.apps;
+    rebuildAddressIndex();
     applyHiddenLabel();
     $statCount.textContent = String(data.apps.filter((a) => !a.hidden).length).padStart(4, '0');
     log(data.apps.length + ' ADDRESSES INDEXED', 'hi');
@@ -1024,47 +1181,12 @@ function num(int, dec) {
 }
 
 function initDecor() {
-  const strip = el('code-strip');
-  if (strip) {
-    strip.replaceChildren();
-    for (let i = 0; i < 17; i++) {
-      const s = document.createElement('span');
-      s.textContent = code(3);
-      strip.append(s);
-    }
-  }
-
-  const grid = el('dt-grid');
-  if (grid) {
-    grid.replaceChildren();
-    for (let c = 0; c < 8; c++) {
-      const col = document.createElement('div');
-      col.className = 'dt-col';
-      const h = document.createElement('h3');
-      h.textContent = 'SUBSET ' + code(2);
-      col.append(h);
-      for (let r = 0; r < 5; r++) {
-        const d = document.createElement('div');
-        d.textContent = num(3, 2);
-        col.append(d);
-      }
-      grid.append(col);
-    }
-  }
-
   el('tab-code').textContent = 'MCK.' + num(9);
   el('macro-code').textContent = '00.' + num(7) + code(1) + num(3);
 }
 
 /** Nudge a few values so the instrument looks alive, without churning it. */
 function driftDecor() {
-  const cells = document.querySelectorAll('.dt-col div');
-  for (let i = 0; i < 3 && cells.length; i++) {
-    cells[(Math.random() * cells.length) | 0].textContent = num(3, 2);
-  }
-  const codes = document.querySelectorAll('.code-strip span');
-  if (codes.length) codes[(Math.random() * codes.length) | 0].textContent = code(3);
-
   el('rd-init').textContent = '00.' + num(4);
   el('rd-freq').textContent = (60 + Math.random() * 9).toFixed(2) + ' KHZ';
   el('rd-phase').textContent = (0.4 + Math.random() * 0.3).toFixed(4);
@@ -1121,6 +1243,10 @@ document.addEventListener('keydown', (e) => {
       runSearch();
       return;
     }
+    if (state.compose.length) {
+      clearCompose();
+      return;
+    }
     Promise.resolve(backend.minimize()).catch(() => {});
     return;
   }
@@ -1132,6 +1258,13 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (state.dialing) return;
+
+  if (e.key === 'Backspace' && !$search.value && state.compose.length) {
+    e.preventDefault();
+    state.compose.pop();
+    renderDhd();
+    return;
+  }
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
@@ -1255,6 +1388,7 @@ if (backend.isDesktop) {
       const keepSel = state.view[state.sel] ? state.view[state.sel].key : null;
       const keepScroll = $results.scrollTop;
       state.apps = data.apps;
+      rebuildAddressIndex();
       applyHiddenLabel();
       runSearch();
       if (keepSel) {
@@ -1269,6 +1403,8 @@ if (backend.isDesktop) {
     });
   }
 }
+buildDhdKeys();
+renderDhd();
 gate.setIris(state.irisClosed, 0);
 tickClock();
 setInterval(tickClock, 1000);

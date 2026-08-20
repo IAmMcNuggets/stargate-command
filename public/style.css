@@ -420,42 +420,71 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
 
 .results-empty { padding: 12px 6px; font-size: calc(9px * var(--ui)); letter-spacing: .14em; color: var(--cyan-dim); opacity: .75; }
 
-/* ------------------------------------------- code strip + data tables */
+/* ------------------------------------------------------------ the DHD */
 
-.code-strip {
-  display: flex; gap: 3px; padding: 0 10px;
-  position: relative; z-index: 20;
-  overflow: hidden;
-}
-.code-strip span {
-  flex: 1 1 0; min-width: 0;
-  text-align: center;
-  font-size: calc(8px * var(--ui)); letter-spacing: .12em;
-  color: var(--cyan-dim);
-  background: var(--bg-raised);
-  border: 1px solid var(--cyan-faint);
-  padding: 2px 0;
-}
+/* Keys are styled as the telemetry cells they replaced, so the console still
+   reads as an instrument rather than sprouting a web form along the bottom. */
 
-.data-tables {
-  padding: 0 10px;
+.dhd {
+  padding: 4px 10px 0;
+  margin: 0 10px;
   position: relative; z-index: 20;
   border-top: 1px solid var(--cyan-faint);
-  padding-top: 4px;
-  margin: 0 10px;
 }
-.dt-head { font-size: calc(8px * var(--ui)); letter-spacing: .2em; color: var(--amber); margin-bottom: 3px; }
-.dt-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
-.dt-col { min-width: 0; }
-.dt-col h3 {
-  margin: 0 0 2px;
-  font-size: calc(7.5px * var(--ui)); font-weight: 400; letter-spacing: .16em;
-  color: var(--cyan-dim);
+
+.dhd-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.dhd-title {
+  font-size: calc(8px * var(--ui)); letter-spacing: .2em; color: var(--amber);
+  white-space: nowrap;
 }
-.dt-col div {
-  font-size: calc(8px * var(--ui)); letter-spacing: .06em; color: var(--cyan);
-  opacity: .75; white-space: nowrap; overflow: hidden;
+.dhd-title.assigning { color: var(--green); }
+.dhd-hint {
+  font-size: calc(8px * var(--ui)); letter-spacing: .14em; color: var(--cyan-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto;
 }
+.dhd-bar .ghost-btn { flex: 0 0 auto; }
+
+/* The tray shares the address-strip renderer with the panel on the left, so it
+   only needs its cells pinned to a size rather than filling a column. */
+.dhd-tray { flex: 0 0 auto; gap: 2px; }
+.dhd-tray .cell { opacity: .55; }
+.dhd-tray .cell.on { opacity: 1; }
+
+/* Capped and centred rather than stretched edge to edge. Across a wide
+   screen a full-width row leaves each glyph adrift in a box five times its
+   width, and the real DHD is a compact cluster of keys anyway. */
+.dhd-keys {
+  display: grid;
+  grid-template-columns: repeat(19, 1fr);
+  gap: 3px;
+  max-width: calc(1080px * var(--ui));
+  margin: 0 auto;
+}
+
+/* Short and wide, like the telemetry cells that used to sit here. A square
+   key at a nineteenth of a wide screen would be 130px tall and eat a quarter
+   of the console; the glyph inside stays square instead. */
+.dhd-key {
+  height: calc(30px * var(--ui));
+  min-width: 0;
+  padding: 0;
+  display: grid; place-items: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--cyan-faint);
+  cursor: pointer;
+  transition: border-color .12s, background .12s, opacity .12s;
+}
+.dhd-key canvas { height: 82%; width: auto; aspect-ratio: 1; display: block; }
+.dhd-key:hover:not(:disabled) { border-color: var(--cyan); background: rgba(41, 182, 246, .16); }
+.dhd-key:focus-visible { outline: 1px solid var(--cyan); outline-offset: 1px; }
+
+/* Already in the address: spent, and no longer clickable. A gate address never
+   repeats a symbol, so offering it again would only ever produce a dead dial. */
+.dhd-key.spent { opacity: .22; cursor: default; }
+.dhd-key.spent:hover { border-color: var(--cyan-faint); background: var(--bg-raised); }
+
+.dhd:not(.armed) .dhd-key { opacity: .5; }
+.dhd:not(.armed) .dhd-key:hover { border-color: var(--cyan-faint); background: var(--bg-raised); }
 
 /* ------------------------------------------------------ bottom strip */
 
@@ -543,7 +572,6 @@ body.dialing #search { opacity: .45; }
 
 @media (max-width: 1180px) {
   main { grid-template-columns: 200px 1fr 250px; }
-  .dt-grid { grid-template-columns: repeat(4, 1fr); }
   .run-sub, .macro { display: none; }
 }
 /* The footer gained the hotkey control, so the key hints run out of room
@@ -554,7 +582,7 @@ body.dialing #search { opacity: .45; }
 }
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr 260px; }
-  .col-left, .data-tables, .code-strip { display: none; }
+  .col-left, .dhd { display: none; }
 }
 
 /* Iris engaged: an armed safety control, so it reads amber like the other
