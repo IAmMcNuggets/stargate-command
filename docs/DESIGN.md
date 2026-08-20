@@ -432,10 +432,18 @@ node server.js --port=47332        # pin the port instead of picking one free
 - **Building on a machine with endpoint protection.** `electron-builder`
   normally downloads Electron and extracts it into `dist/`, then renames the
   directory. Real-time scanners (Sophos, Acronis Active Protection) open the
-  freshly written executables, and the rename fails with `EPERM`. The build
-  config sets `electronDist` to `node_modules/electron/dist`, which is already
-  unpacked, so that step is skipped entirely. Don't "fix" this by excluding
-  the folder from managed security software.
+  freshly written executables, and the rename fails with `EPERM`.
+
+  `npm run dist` and `npm run pack` therefore pass
+  `--config.electronDist=node_modules/electron/dist`, which is already unpacked,
+  so that step is skipped entirely. Don't "fix" this by excluding the folder
+  from managed security software.
+
+  It lives on the Windows scripts rather than in the shared `build` block on
+  purpose: `electronDist` is a single top-level option, so a shared value would
+  point a Linux build at a Windows Electron. If you are tidying `package.json`
+  and this flag looks redundant, it is not - removing it brings the `EPERM`
+  back on machines running real-time scanners.
 - `tools/drive-desktop.js` evaluates an expression inside the running desktop
   app over the DevTools protocol, for checking a packaged build without
   driving the window by hand:
