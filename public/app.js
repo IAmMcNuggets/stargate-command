@@ -698,6 +698,7 @@ async function shutWormhole(manual) {
   clearWormholeTimers();
   if (!wormholeOpen()) return;
   sfx.stopHum();
+  sfx.wormholeClose();
   await gate.closeWormhole(520);
   log('WORMHOLE DISENGAGED' + (manual ? ' — MANUAL SHUTDOWN' : ' — 38 MINUTE LIMIT'), 'ok');
   gate.reset();

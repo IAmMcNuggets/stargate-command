@@ -112,5 +112,5 @@ on the Stargate material in `assets/` and `public/sfx/`, and it does not.
 
 The sounds are optional as far as the program is concerned: delete
 `public/sfx/` and it falls back to the synthesized audio it shipped with
-originally, which is built from oscillators and noise. Drop in your own five
+originally, which is built from oscillators and noise. Drop in your own six
 files under the same names and it uses those instead.

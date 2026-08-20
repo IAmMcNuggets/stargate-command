@@ -19,6 +19,7 @@ const SFX = {
   chevronLock: 'sfx/chevron-lock.mp3',
   ringSpin: 'sfx/ring-spin.mp3',
   wormholeOpen: 'sfx/wormhole-open.mp3',
+  wormholeClose: 'sfx/wormhole-close.mp3',
   irisOpen: 'sfx/iris-open.mp3',
   irisClose: 'sfx/iris-close.mp3',
 };
@@ -395,6 +396,15 @@ class GateAudio {
     o.connect(og).connect(this.master);
     o.start(t);
     o.stop(t + d + 0.1);
+  }
+
+  /**
+   * The gate shutting down. There was no synthesized equivalent, so without
+   * the recording this stays silent rather than borrowing a sound that means
+   * something else.
+   */
+  wormholeClose() {
+    this._play('wormholeClose', 0.9);
   }
 
   /** The trinium blades. Falls back to the chevron clunk, as it used to. */
