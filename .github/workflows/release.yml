@@ -1,4 +1,4 @@
-name: Build Linux AppImage
+name: Build release binaries
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -35,8 +35,33 @@ jobs:
           path: dist/*.AppImage
           if-no-files-found: error
 
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npx electron-builder --win --publish never
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stargate-command-windows
+          path: dist/*.exe
+          if-no-files-found: error
+
   publish:
-    needs: build
+    needs: [build-linux, build-windows]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -46,10 +71,18 @@ jobs:
           name: stargate-command-appimage
           path: dist
 
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: stargate-command-windows
+          path: dist
+
       - name: Attach to GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.AppImage
+          files: |
+            dist/*.AppImage
+            dist/*.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
