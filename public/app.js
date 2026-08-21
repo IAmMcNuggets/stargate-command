@@ -977,10 +977,32 @@ function rebuildAddressIndex() {
   for (const app of state.apps) addressIndex.set(addressKey(addressForApp(app)), app);
 }
 
-/** Constellations wanted before the address is complete; the origin is extra. */
+/**
+ * Constellations wanted before an address is complete; the origin is extra.
+ *
+ * Assigning an address to a destination is fixed by what it is: eight for a
+ * remote machine, six for anything local.
+ */
 function composeNeeds() {
-  // Nine chevrons for a remote machine, seven for anything local.
   return state.assign && state.assign.kind === 'remote' ? 8 : 6;
+}
+
+/**
+ * The most that can be entered when dialling freely.
+ *
+ * You do not tell the gate up front how far you are dialling. Six symbols is
+ * a seven chevron address; keep going and an eighth makes it a nine chevron
+ * one, which is how a remote machine is reached.
+ */
+function composeMax() {
+  return state.assign ? composeNeeds() : 8;
+}
+
+/** True when what has been entered is a whole address rather than a part. */
+function composeComplete() {
+  const n = state.compose.length;
+  if (state.assign) return n === composeNeeds();
+  return n === 6 || n === 8;
 }
 
 /**
@@ -1031,7 +1053,7 @@ function pressGlyph(g) {
   // A gate address never repeats a symbol, so a second press would only ever
   // build an address that cannot match anything.
   if (state.compose.includes(g)) return;
-  if (state.compose.length >= composeNeeds()) return;
+  if (state.compose.length >= composeMax()) return;
   state.compose.push(g);
   sfx.dhdPress();
   renderDhd();
@@ -1044,7 +1066,8 @@ function clearCompose() {
 }
 
 function renderDhd() {
-  const need = composeNeeds();
+  // Six slots to start with, growing as a seventh and eighth are added.
+  const need = state.assign ? composeNeeds() : Math.max(6, state.compose.length);
   const cells = state.compose.slice();
   while (cells.length < need) cells.push(null);
   cells.push(0); // the point of origin closes every address
@@ -1055,7 +1078,7 @@ function renderDhd() {
   });
 
   const armed = dhdArmed();
-  const complete = state.compose.length === need;
+  const complete = composeComplete();
   const assigning = !!state.assign;
   $dhd.classList.toggle('armed', armed);
   $dhdDial.disabled = !complete || !armed;
@@ -1071,13 +1094,21 @@ function renderDhd() {
     key.classList.toggle('spent', state.compose.includes(Number(key.dataset.g)));
   }
 
+  const n = state.compose.length;
   if (!armed) $dhdHint.textContent = state.dialing ? 'GATE ENGAGED' : 'PRESS ADDR ON A ROW TO SET ONE';
-  else if (complete) $dhdHint.textContent = state.compose.map((g) => GLYPH_NAMES[g]).join(' · ');
-  else $dhdHint.textContent = 'SELECT ' + (need - state.compose.length) + ' MORE';
+  else if (complete) {
+    const names = state.compose.map((g) => GLYPH_NAMES[g]).join(' · ');
+    // At six it is dialable, but two more reaches a remote machine.
+    $dhdHint.textContent = !state.assign && n === 6 ? names + '   (+2 FOR NINE CHEVRONS)' : names;
+  } else if (!state.assign && n > 6) {
+    $dhdHint.textContent = 'SELECT ' + (8 - n) + ' MORE FOR A NINE CHEVRON ADDRESS';
+  } else {
+    $dhdHint.textContent = 'SELECT ' + (composeNeeds() - n) + ' MORE';
+  }
 }
 
 async function dialComposed() {
-  if (!dhdArmed() || state.compose.length !== composeNeeds()) return;
+  if (!dhdArmed() || !composeComplete()) return;
   const address = state.compose.concat([0]);
   const found = addressIndex.get(addressKey(address));
 
@@ -1086,6 +1117,12 @@ async function dialComposed() {
   const target = found || { id: null, key: '', name: 'UNKNOWN ADDRESS', kind: 'unknown', missing: true };
 
   state.address = address;
+  // The readout follows the registry selection, which is not what is being
+  // dialled here. Point it at the address actually going out.
+  $roDest.textContent = target.name.toUpperCase();
+  renderAddressStrip(address);
+  const $caption = el('addr-caption');
+  if ($caption) $caption.textContent = address.map((g) => GLYPH_NAMES[g]).join(' · ');
   await dialAddress(target, address, false);
   // Cleared either way. After a miss the symbols were wrong, and after a hit
   // the address has been dialled; keeping them only means clearing by hand
@@ -1115,7 +1152,7 @@ function cancelAssign() {
 
 async function saveAssign() {
   const app = state.assign;
-  if (!app || state.compose.length !== composeNeeds()) return;
+  if (!app || !composeComplete()) return;
   try {
     const data = await backend.setAddress(app.id, state.compose);
     state.apps = data.apps;

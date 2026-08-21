@@ -67,6 +67,10 @@ keys, one per constellation, with DIAL in the middle. Press six of them and
 hit it, and whatever lives at that address opens. Get it wrong and the gate
 still locks all seven chevrons before telling you there is nothing there.
 
+You are not asked up front how far you are dialing. Six symbols is a seven
+chevron address; keep going and an eighth makes it a nine chevron one, which
+is how you reach a remote machine by hand.
+
 ![Composing an address on the DHD](docs/screenshot-dhd.jpg)
 
 **Or set your own.** Press MANAGE, then ADDR on any entry, and choose the six
