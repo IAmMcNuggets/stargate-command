@@ -61,7 +61,11 @@
       ],
       "category": "Utility",
       "icon": "build/icon.png",
-      "executableName": "stargate-command"
+      "executableName": "stargate-command",
+      "artifactName": "Stargate-Command-${version}.${ext}"
+    },
+    "appImage": {
+      "compression": "gzip"
     },
     "electronLanguages": [
       "en-US"
