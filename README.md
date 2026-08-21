@@ -1,6 +1,7 @@
 # Stargate Command
 
-An app launcher for Windows that dials your programs like the SG-1 gate.
+An app launcher for Windows and Linux that dials your programs like the SG-1
+gate.
 
 Type a program name, press Enter, and the gate dials it. The ring spins, seven
 chevrons lock one at a time, the kawoosh fires, and your program opens.
@@ -11,13 +12,23 @@ It is slower than clicking an icon. That is the point.
 
 ## Download
 
-Grab the installer from [Releases](../../releases/latest), run it, done.
-Windows 10 or 11, 64-bit. Nothing else to install.
+Both builds are on the [releases page](../../releases/latest).
 
-It is not code-signed, so Windows will show a blue "Windows protected your PC"
-box. Click **More info**, then **Run anyway**. A signing certificate costs a few
-hundred dollars a year and this is a hobby project. If you would rather not
-trust a stranger's binary, the source is right here and builds in two commands.
+**Windows:** run the installer. Windows 10 or 11, 64-bit, nothing else to
+install.
+
+**Linux:** download the AppImage, make it executable, and run it.
+
+```bash
+chmod +x Stargate-Command-*.AppImage
+./Stargate-Command-*.AppImage
+```
+
+The Windows build is not code-signed, so it will show a blue "Windows protected
+your PC" box. Click **More info**, then **Run anyway**. A signing certificate
+costs a few hundred dollars a year and this is a hobby project. If you would
+rather not trust a stranger's binary, the source is right here and builds in
+two commands.
 
 ## Using it
 
@@ -51,15 +62,27 @@ drawn by hand, so the symbols on the ring are the actual constellations.
 down the right, 4, 5, 6 back up the left, 7 at the top. Each symbol spins to
 top dead center to be grabbed, exactly as on screen.
 
-**You can dial by hand.** The row of symbols along the bottom is a DHD. Press
-six of them and hit DIAL, and whatever lives at that address opens. Get it
-wrong and the gate still dials all seven chevrons, forms the wormhole, and
-only then admits there is nothing there.
+**You can dial by hand.** The row of symbols along the bottom is a DHD: 38
+keys, one per constellation, with DIAL in the middle. Press six of them and
+hit it, and whatever lives at that address opens. Get it wrong and the gate
+still locks all seven chevrons before telling you there is nothing there.
+
+![Composing an address on the DHD](docs/screenshot-dhd.jpg)
+
+**Or set your own.** Press MANAGE, then ADDR on any entry, and choose the six
+symbols yourself. RESET puts it back to the derived one.
 
 **Remote machines get nine chevrons.** Add one with a hostname or IP and it
-dials the full nine-chevron sequence before opening Remote Desktop, because
-seven chevrons is a local address and somewhere that is not your own machine
-deserves the long dial.
+dials the full nine-chevron sequence before opening a remote desktop session,
+because seven chevrons is a local address and somewhere that is not your own
+machine deserves the long dial. Windows uses mstsc; Linux uses FreeRDP,
+Remmina or rdesktop, whichever you have.
+
+![A nine-chevron dial to a remote machine](docs/screenshot-remote.jpg)
+
+**The sounds are the real ones.** Chevron locks, the ring, the kawoosh, the
+iris, the shutdown and the DHD keys. There is a synthesized version of each
+behind them, so deleting the sound files degrades rather than breaks it.
 
 **The iris works.** It is a real leaf shutter, 22 blades, and the spiral falls
 out of the geometry rather than being drawn on.
@@ -78,8 +101,8 @@ npm run dist       # build the installer
 ```
 
 Windows and Linux both build (`npm run dist` / `npm run dist:linux`). There
-are no runtime dependencies beyond Electron itself: the glyphs, the sounds and
-the PNG decoding are all hand-rolled.
+are no runtime dependencies beyond Electron itself: the glyph tracing, the
+fallback audio and the PNG decoding are all hand-rolled.
 
 ## Worth knowing
 
@@ -88,7 +111,8 @@ pulls each program's icon. That is all it looks at.
 
 **It makes no network connections of its own.** No telemetry, no update check,
 nothing phoning home. You can verify that with a firewall, or by reading
-`electron/main.js`. Its settings live in `%APPDATA%\Stargate Command`.
+`electron/main.js`. Settings live in `%APPDATA%\Stargate Command` on Windows
+and `~/.config/Stargate Command` on Linux, and survive an upgrade.
 
 The one exception is the obvious one: a remote destination starts your system's
 Remote Desktop client, and that connects where you told it to. Nothing else
@@ -109,6 +133,8 @@ affiliated with or endorsed by the rights holders.
 
 **The MIT license covers the code only.** It is not mine to place any license
 on the Stargate material in `assets/` and `public/sfx/`, and it does not.
+
+Linux support was contributed by [@jkoehler11](https://github.com/jkoehler11).
 
 The sounds are optional as far as the program is concerned: delete
 `public/sfx/` and it falls back to the synthesized audio it shipped with
