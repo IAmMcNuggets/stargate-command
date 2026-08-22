@@ -60,8 +60,35 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The runner is Apple Silicon, so the x64 slice is cross-built here and
+      # electron-builder fetches the matching Electron for it.
+      - name: Build macOS disk images
+        run: npm run dist:mac
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: stargate-command-macos
+          path: dist/*.dmg
+          if-no-files-found: error
+
   publish:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-mac]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -77,11 +104,18 @@ jobs:
           name: stargate-command-windows
           path: dist
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: stargate-command-macos
+          path: dist
+
       - name: Attach to GitHub release
         uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.AppImage
             dist/*.exe
+            dist/*.dmg
         env:
           GITHUB_TOKEN: ${{ github.token }}

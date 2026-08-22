@@ -1,7 +1,7 @@
 # Stargate Command
 
-An app launcher for Windows and Linux that dials your programs like the SG-1
-gate.
+An app launcher for Windows, macOS and Linux that dials your programs like the
+SG-1 gate.
 
 Type a program name, press Enter, and the gate dials it. The ring spins, seven
 chevrons lock one at a time, the kawoosh fires, and your program opens.
@@ -17,6 +17,9 @@ Both builds are on the [releases page](../../releases/latest).
 **Windows:** run the installer. Windows 10 or 11, 64-bit, nothing else to
 install.
 
+**macOS:** open the .dmg and drag the gate to Applications. There is a build
+for Apple Silicon and one for Intel; macOS 11 or later.
+
 **Linux:** download the AppImage, make it executable, and run it.
 
 ```bash
@@ -24,9 +27,21 @@ chmod +x Stargate-Command-*.AppImage
 ./Stargate-Command-*.AppImage
 ```
 
-The Windows build is not code-signed, so it will show a blue "Windows protected
-your PC" box. Click **More info**, then **Run anyway**. A signing certificate
-costs a few hundred dollars a year and this is a hobby project. If you would
+Neither desktop build is code-signed, and the two of them complain about it
+differently.
+
+Windows shows a blue "Windows protected your PC" box: click **More info**,
+then **Run anyway**.
+
+macOS is blunter. Gatekeeper refuses an unsigned app outright rather than
+warning about it, so the first launch needs the quarantine flag cleared:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Stargate Command.app"
+```
+
+Then open it normally. A signing certificate is a few hundred dollars a year
+on Windows and $99 a year from Apple, and this is a hobby project. If you would
 rather not trust a stranger's binary, the source is right here and builds in
 two commands.
 
@@ -43,7 +58,7 @@ two commands.
 | <kbd>M</kbd> | audio on or off |
 | <kbd>F5</kbd> | rescan for new programs |
 | *click glyphs* | dial an address by hand on the DHD along the bottom |
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | summon it from anywhere, rebindable |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | summon it from anywhere, rebindable (<kbd>Cmd</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> on macOS) |
 
 Press **MANAGE** to hide entries you never launch, or to give one an address
 of your choosing with **ADDR**. Press **+ ADD** for anything the Start Menu
@@ -79,7 +94,8 @@ symbols yourself. RESET puts it back to the derived one.
 **Remote machines get nine chevrons.** Add one with a hostname or IP and it
 dials the full nine-chevron sequence before opening a remote desktop session,
 because seven chevrons is a local address and somewhere that is not your own
-machine deserves the long dial. Windows uses mstsc; Linux uses FreeRDP,
+machine deserves the long dial. Windows uses mstsc; macOS hands an rdp:// URL
+to Windows App (formerly Microsoft Remote Desktop); Linux uses FreeRDP,
 Remmina or rdesktop, whichever you have.
 
 ![A nine-chevron dial to a remote machine](docs/screenshot-remote.jpg)
@@ -104,19 +120,23 @@ npm start          # run it
 npm run dist       # build the installer
 ```
 
-Windows and Linux both build (`npm run dist` / `npm run dist:linux`). There
-are no runtime dependencies beyond Electron itself: the glyph tracing, the
-fallback audio and the PNG decoding are all hand-rolled.
+All three platforms build (`npm run dist` / `npm run dist:mac` /
+`npm run dist:linux`), each on its own kind of machine. There are no runtime
+dependencies beyond Electron itself: the glyph tracing, the fallback audio,
+the PNG decoding and the macOS binary-plist reader are all hand-rolled.
 
 ## Worth knowing
 
 It reads your Start Menu and Desktop shortcuts to build the program list, and
-pulls each program's icon. That is all it looks at.
+pulls each program's icon. On macOS it reads the .app bundles in your
+application folders instead, and on Linux the .desktop files. That is all it
+looks at.
 
 **It makes no network connections of its own.** No telemetry, no update check,
 nothing phoning home. You can verify that with a firewall, or by reading
-`electron/main.js`. Settings live in `%APPDATA%\Stargate Command` on Windows
-and `~/.config/Stargate Command` on Linux, and survive an upgrade.
+`electron/main.js`. Settings live in `%APPDATA%\Stargate Command` on Windows,
+`~/Library/Application Support/Stargate Command` on macOS and
+`~/.config/Stargate Command` on Linux, and survive an upgrade.
 
 The one exception is the obvious one: a remote destination starts your system's
 Remote Desktop client, and that connects where you told it to. Nothing else

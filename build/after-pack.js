@@ -21,6 +21,11 @@
  *                       license requires be distributed. It also compresses to
  *                       almost nothing in the installer.
  *
+ * Nothing is trimmed on macOS or Linux. The DirectX compiler is a Windows
+ * artefact and simply is not there, and inside a .app bundle deleting files
+ * after the fact would invalidate the code signature for the sake of a few
+ * megabytes — so the loop below finds nothing and says nothing.
+ *
  * To keep everything Electron ships, remove "afterPack" from package.json.
  */
 

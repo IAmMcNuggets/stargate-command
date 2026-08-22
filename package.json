@@ -14,6 +14,8 @@
     "pack": "electron-builder --win --dir --publish never --config.electronDist=node_modules/electron/dist",
     "dist:linux": "electron-builder --linux --publish never",
     "pack:linux": "electron-builder --linux --dir --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "pack:mac": "electron-builder --mac --dir --publish never",
     "trace-glyphs": "node tools/trace-glyphs.js assets/glyphs.png --region 228,196,772,812 --circle 623,623,535 --cols 6 --rows 7 --preview",
     "release": "node tools/make-release.js"
   },
@@ -66,6 +68,33 @@
     },
     "appImage": {
       "compression": "gzip"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utility",
+      "icon": "build/icon.png",
+      "artifactName": "Stargate-Command-${version}-${arch}.${ext}",
+      "darkModeSupport": true,
+      "identity": null,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "Stargate-Command-${version}-${arch}.${ext}"
     },
     "electronLanguages": [
       "en-US"
