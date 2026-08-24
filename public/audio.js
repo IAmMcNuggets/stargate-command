@@ -23,6 +23,7 @@ const SFX = {
   wormholeClose: 'sfx/wormhole-close.mp3',
   irisOpen: 'sfx/iris-open.mp3',
   irisClose: 'sfx/iris-close.mp3',
+  dialFail: 'sfx/dial-fail.mp3',
 };
 
 class GateAudio {
@@ -476,6 +477,12 @@ class GateAudio {
 
   /** Failed dial. */
   error() {
+    if (!this._ok()) return;
+    if (this._play('dialFail', 0.9)) return;
+    this._synthError();
+  }
+
+  _synthError() {
     if (!this._ok()) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;

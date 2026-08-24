@@ -535,6 +535,24 @@ class Gate {
       ctx.lineTo(Math.cos(tick) * aR * 0.61, Math.sin(tick) * aR * 0.61);
       ctx.stroke();
       ctx.restore();
+
+      // Soft glowing diagnostic dot in the center.
+      const blink = (Math.sin(time * Math.PI * 2) + 1) * 0.5;
+      const radius = R * 0.036;
+
+      ctx.save();
+
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      gradient.addColorStop(0, `rgba(79, 195, 247, ${0.25 + blink * 0.65})`);
+      gradient.addColorStop(0.35, `rgba(79, 195, 247, ${0.15 + blink * 0.4})`);
+      gradient.addColorStop(1, 'rgba(79, 195, 247, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     if (this.horizon <= 0.001) {
@@ -1002,49 +1020,51 @@ class Gate {
     }
     if (!this._chevCache || this._chevCache.R !== R) this._chevCache = { R };
 
-    // Radii the chevron occupies, as fractions of R. It straddles the rim,
-    // protruding slightly past the outside edge and reaching inward far
-    // enough to overlap the glyph track. The top chevron — the one that
-    // grabs — is built oversized, as on the prop.
-    const s = big ? 1.22 : 1;
-    const rTop = big ? 1.045 : 1.03;
-    const rShoulder = 0.955;
-    const rTip = big ? 0.838 : 0.855;
-    const halfTop = 0.085 * s;
-    const halfNeck = 0.036 * s;
+    // The housing flares outward at the top and tapers to a point on the
+    // rim, rather than being a rectangular bracket.
+    //
+    // All nine are the same size. The top one used to be built oversized,
+    // which reads fine on a narrow bracket but not on this silhouette: at
+    // 1.22 its half-width came to 0.26R, better than half the gate across,
+    // and it stopped looking like the same part as the other eight.
+    const rTop = big ? 1.0 : 0.99;
+    const rShoulder = 0.855;
+    const rTip = 0.855;
+
+    const halfTop = 0.215;
+    const halfOuter = 0.075;
+    const halfShoulder = 0.015;
 
     const frame = new Path2D();
     frame.moveTo(-R * halfTop, -R * rTop);
-    frame.lineTo(R * halfTop, -R * rTop);
-    frame.lineTo(R * halfTop, -R * rShoulder);
-    frame.lineTo(R * halfNeck, -R * rShoulder);
+    // Curved top edge.
+    frame.quadraticCurveTo(0, -R * (rTop + 0.038), R * halfTop, -R * rTop);
+    // Outer angled section, shoulder, then the tip on the rim.
+    frame.lineTo(R * halfOuter, -R * (rTop - 0.025));
+    frame.lineTo(R * halfShoulder, -R * rShoulder);
     frame.lineTo(0, -R * rTip);
-    frame.lineTo(-R * halfNeck, -R * rShoulder);
-    frame.lineTo(-R * halfTop, -R * rShoulder);
+    frame.lineTo(-R * halfShoulder, -R * rShoulder);
+    frame.lineTo(-R * halfOuter, -R * (rTop - 0.025));
     frame.closePath();
 
-    // The illuminated element: a smaller arrowhead seated inside the housing,
-    // so the cast metal always reads as a frame around the light.
-    const lTop = rTop - 0.017;
-    const lShoulder = 0.948;
-    const lTip = rTip + 0.026;
-    const lHalfTop = 0.057 * s;
-    const lHalfNeck = 0.021 * s;
+    // The illuminated element, seated inside the housing. Its top has to sit
+    // at a smaller radius than the frame or the light protrudes past the
+    // metal that is supposed to surround it.
+    const lTop = rTop - 0.012;
+    const lTip = rTip + 0.036;
+    const lHalfTop = 0.052;
+    const lHalfTip = 0.01;
 
     const light = new Path2D();
     light.moveTo(-R * lHalfTop, -R * lTop);
     light.lineTo(R * lHalfTop, -R * lTop);
-    light.lineTo(R * lHalfTop, -R * lShoulder);
-    light.lineTo(R * lHalfNeck, -R * lShoulder);
-    light.lineTo(0, -R * lTip);
-    light.lineTo(-R * lHalfNeck, -R * lShoulder);
-    light.lineTo(-R * lHalfTop, -R * lShoulder);
+    light.lineTo(R * lHalfTip, -R * lTip);
+    light.lineTo(-R * lHalfTip, -R * lTip);
     light.closePath();
 
     this._chevCache[key] = { frame, light, rTop, rTip };
     return this._chevCache[key];
   }
-
   _drawChevrons(ctx, R, time) {
     const edge = Math.max(1, R * 0.0045);
 
