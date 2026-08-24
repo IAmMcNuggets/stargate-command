@@ -8,6 +8,7 @@
  */
 
 const { app, BrowserWindow, ipcMain, shell, dialog, globalShortcut, screen } = require('electron');
+const fs = require('fs');
 const path = require('path');
 
 const { createCatalog } = require('../lib/catalog');
@@ -27,12 +28,16 @@ let mainWindow = null;
 let activator = null;
 
 const IS_WIN32 = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+const IS_LINUX = !IS_WIN32 && !IS_MAC;
 
 // globalShortcut cannot grab keys under a Wayland session; Plasma defaults to
 // Wayland, so a summon hotkey has to come from KDE System Settings there.
-// Windows and X11 are unaffected.
+// Windows, X11 and macOS are unaffected — and this must be tested against
+// Linux specifically, since a stray WAYLAND_DISPLAY in a macOS shell would
+// otherwise disable the hotkey on a platform that has no Wayland at all.
 const IS_WAYLAND =
-  !IS_WIN32 && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
+  IS_LINUX && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
 
 function log(message, isError) {
   (isError ? console.error : console.log)('  ' + message);
@@ -117,9 +122,15 @@ function summon() {
   }
   if (mainWindow.isMinimized()) mainWindow.restore();
   if (!mainWindow.isVisible()) mainWindow.show();
-  // Windows blocks plain foreground stealing; a brief always-on-top wins it.
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.setAlwaysOnTop(false);
+  if (IS_MAC) {
+    // Focusing a window is not enough on macOS: a background application has
+    // to ask to come forward before any of its windows can take the front.
+    app.focus({ steal: true });
+  } else {
+    // Windows blocks plain foreground stealing; a brief always-on-top wins it.
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.setAlwaysOnTop(false);
+  }
   mainWindow.focus();
   mainWindow.webContents.send('gate:summoned');
 }
@@ -165,12 +176,28 @@ function classifyTarget(raw) {
     if (/\.(exe|com|bat|cmd)$/i.test(t)) return { kind: 'lnk', launchPath: t, target: t };
     return { kind: 'file', launchPath: t, target: '' };
   }
-  if (/\.desktop$/i.test(t)) return { kind: 'desktop', launchPath: t, target: t };
+  // A .app bundle and a .desktop file are the same idea on their respective
+  // platforms: the thing the desktop itself regards as "an application".
+  if (IS_MAC && /\.app$/i.test(t)) return { kind: 'app', launchPath: t, target: t };
+  if (IS_LINUX && /\.desktop$/i.test(t)) return { kind: 'desktop', launchPath: t, target: t };
+
+  // Every directory carries the executable bit, so it has to be ruled out
+  // before that bit can be read as "this is a program". Without this a folder
+  // would be classified as a command and then fail to spawn — and on macOS
+  // that would catch every bundle-shaped target too.
+  let stat = null;
+  try {
+    stat = fs.statSync(t);
+  } catch (_) {
+    stat = null; // the caller checks existence and reports it properly
+  }
+  if (stat && stat.isDirectory()) return { kind: 'file', launchPath: t, target: '' };
+
   // A file with the executable bit set is run directly; anything else
   // (documents, folders) is handed to the shell, like double-clicking it.
   let executable = false;
   try {
-    require('fs').accessSync(t, require('fs').constants.X_OK);
+    fs.accessSync(t, fs.constants.X_OK);
     executable = true;
   } catch (_) {
     executable = false;
@@ -254,7 +281,7 @@ ipcMain.handle('catalog:addCustom', (_e, entry) => {
     spec = { kind: 'remote', launchPath: hostSpec, target: hostSpec, host, port };
   } else {
     spec = classifyTarget(entry && entry.target);
-    if (spec.kind !== 'url' && !require('fs').existsSync(spec.launchPath)) {
+    if (spec.kind !== 'url' && !fs.existsSync(spec.launchPath)) {
       throw new Error('that target does not exist');
     }
   }
@@ -283,19 +310,21 @@ ipcMain.handle('catalog:removeCustom', (_e, id) => {
   return clientList();
 });
 
+// What counts as "a program" to the file picker, per platform.
+const PROGRAM_EXTENSIONS = IS_WIN32
+  ? ['exe', 'bat', 'cmd', 'com', 'lnk']
+  : IS_MAC
+    ? ['app']
+    : ['desktop'];
+
 ipcMain.handle('dialog:pickTarget', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose a program, file or folder',
     properties: ['openFile'],
-    filters: IS_WIN32
-      ? [
-          { name: 'Programs', extensions: ['exe', 'bat', 'cmd', 'com', 'lnk'] },
-          { name: 'All files', extensions: ['*'] },
-        ]
-      : [
-          { name: 'Programs', extensions: ['desktop'] },
-          { name: 'All files', extensions: ['*'] },
-        ],
+    filters: [
+      { name: 'Programs', extensions: PROGRAM_EXTENSIONS },
+      { name: 'All files', extensions: ['*'] },
+    ],
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];
@@ -378,5 +407,10 @@ if (!app.requestSingleInstanceLock()) {
     settings.flush();
   });
 
-  app.on('window-all-closed', () => app.quit());
+  // macOS keeps an application running when its last window closes, and here
+  // that is exactly what you want: the summon hotkey keeps working and the
+  // dock icon brings the gate back. Quit from the menu, or Cmd+Q.
+  app.on('window-all-closed', () => {
+    if (!IS_MAC) app.quit();
+  });
 }
