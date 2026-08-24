@@ -4,7 +4,7 @@
  * Record a demo clip of the gate dialing.
  *
  *   "dist\win-unpacked\Stargate Command.exe" --remote-debugging-port=9222
- *   node tools/record-demo.js [scene] [out.mp4]     scenes: dial, iris
+ *   node tools/record-demo.js [scene] [out.mp4]     scenes: dial, manual, iris
  *
  * Frames come from Chromium's own screencast over the DevTools protocol
  * rather than from a screen recorder. Windows' Game Bar captures the window
@@ -63,6 +63,31 @@ const SCENES = {
     return 'done';
   })()`,
 
+  // Dialling a remote machine by hand: eight symbols pressed on the DHD, then
+  // nine chevrons. Shows the keyboard and the long dial in one take.
+  manual: `(async () => {
+    ${PRELUDE}
+    if (state.irisClosed) toggleIris();
+    const remote = state.apps.find((a) => a.kind === 'remote');
+    if (!remote) return 'no remote destination to dial';
+    clearCompose();
+    await sleep(1100);
+
+    // Press them at a human pace, with a beat before committing.
+    const address = addressForApp(remote);
+    for (const g of address.slice(0, address.length - 1)) {
+      document.querySelector('.dhd-key[data-g="' + g + '"]').click();
+      await sleep(330 + Math.random() * 160);
+    }
+    await sleep(900);
+
+    document.getElementById('dhd-dial').click();
+    // The click starts the dial; wait for it rather than guessing a duration.
+    await sleep(400);
+    for (let i = 0; i < 400 && state.dialing; i++) await sleep(50);
+    await sleep(2600);
+    return 'done';
+  })()`,
   // The iris: same dial, but nothing comes through and nothing launches.
   iris: `(async () => {
     ${PRELUDE}
