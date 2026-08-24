@@ -433,6 +433,9 @@ class Gate {
   async openWormhole(duration) {
     this.shake = 1;
     this.kawooshT = 0;
+
+    await new Promise(r => setTimeout(r, duration));
+
     await this._tween(duration, (t) => {
       this.kawooshT = t;
       this.horizon = clamp((t - 0.3) / 0.45, 0, 1);
