@@ -1,7 +1,7 @@
 {
   "name": "stargate-launcher",
   "productName": "Stargate Command",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "license": "MIT",
   "description": "An app launcher that dials your programs like an SG-1 Stargate",
   "author": "David Weisberg",
