@@ -1013,55 +1013,99 @@ class Gate {
    * on the outer body. Built once per resize and reused for all nine.
    * Drawn at top dead center; callers rotate into position.
    */
-  _chevronPath(R, big) {
-    const key = big ? 'big' : 'small';
-    if (this._chevCache && this._chevCache.R === R && this._chevCache[key]) {
-      return this._chevCache[key];
-    }
-    if (!this._chevCache || this._chevCache.R !== R) this._chevCache = { R };
+   _chevronPath(R, big) {
+     const key = big ? 'big' : 'small';
 
-    // Radii the chevron occupies, as fractions of R. It straddles the rim,
-    // protruding slightly past the outside edge and reaching inward far
-    // enough to overlap the glyph track. The top chevron — the one that
-    // grabs — is built oversized, as on the prop.
-    const s = big ? 1.22 : 1;
-    const rTop = big ? 1.045 : 1.03;
-    const rShoulder = 0.955;
-    const rTip = big ? 0.838 : 0.855;
-    const halfTop = 0.085 * s;
-    const halfNeck = 0.036 * s;
+     if (this._chevCache && this._chevCache.R === R && this._chevCache[key]) {
+       return this._chevCache[key];
+     }
 
-    const frame = new Path2D();
-    frame.moveTo(-R * halfTop, -R * rTop);
-    frame.lineTo(R * halfTop, -R * rTop);
-    frame.lineTo(R * halfTop, -R * rShoulder);
-    frame.lineTo(R * halfNeck, -R * rShoulder);
-    frame.lineTo(0, -R * rTip);
-    frame.lineTo(-R * halfNeck, -R * rShoulder);
-    frame.lineTo(-R * halfTop, -R * rShoulder);
-    frame.closePath();
+     if (!this._chevCache || this._chevCache.R !== R) {
+       this._chevCache = { R };
+     }
 
-    // The illuminated element: a smaller arrowhead seated inside the housing,
-    // so the cast metal always reads as a frame around the light.
-    const lTop = rTop - 0.017;
-    const lShoulder = 0.948;
-    const lTip = rTip + 0.026;
-    const lHalfTop = 0.057 * s;
-    const lHalfNeck = 0.021 * s;
+     // Stargate-style chevron proportions.
+     //
+     // The upper tabs flare outward instead of being rectangular.
+     // The outer housing is deliberately wider and more angular,
+     // while the illuminated insert follows the same silhouette.
+     const s = big ? 1.22 : 1;
 
-    const light = new Path2D();
-    light.moveTo(-R * lHalfTop, -R * lTop);
-    light.lineTo(R * lHalfTop, -R * lTop);
-    light.lineTo(R * lHalfTop, -R * lShoulder);
-    light.lineTo(R * lHalfNeck, -R * lShoulder);
-    light.lineTo(0, -R * lTip);
-    light.lineTo(-R * lHalfNeck, -R * lShoulder);
-    light.lineTo(-R * lHalfTop, -R * lShoulder);
-    light.closePath();
+     const rTop = big ? 1.00 : 0.99;
+     const rShoulder = 0.855;
+     const rTip = 0.855;
 
-    this._chevCache[key] = { frame, light, rTop, rTip };
-    return this._chevCache[key];
-  }
+     // Width at the very top of the chevron.
+     const halfTop = 0.215 * s;
+
+     const halfOuter = 0.075 * s;
+
+     // Width where the flared top transitions into the neck.
+     const halfShoulder = 0.015 * s;
+
+     const frame = new Path2D();
+
+     frame.moveTo(-R * halfTop, -R * rTop);
+
+     // Curved top edge
+     frame.quadraticCurveTo(
+       0,
+       -R * (rTop + 0.038),
+       R * halfTop,
+       -R * rTop
+     );
+
+     // Outer angled section
+     frame.lineTo(R * halfOuter, -R * (rTop - 0.025));
+
+     // Shoulder
+     frame.lineTo(R * halfShoulder, -R * rShoulder);
+
+     // Tip
+     frame.lineTo(0, -R * rTip);
+
+     frame.lineTo(-R * halfShoulder, -R * rShoulder);
+     frame.lineTo(-R * halfOuter, -R * (rTop - 0.025));
+
+     frame.closePath();
+
+     // ------------------------------------------------------------
+     // Illuminated insert
+     // ------------------------------------------------------------
+
+     const lTop = rTop + 0.016;
+     const lTip = rTip + 0.036;
+
+     const lHalfTop = 0.052 * s;
+
+     const lHalfTip = 0.01 * s;
+
+     const light = new Path2D();
+
+     light.moveTo(-R * lHalfTop, -R * lTop);
+
+     // Straight top edge
+     light.lineTo(R * lHalfTop, -R * lTop);
+
+     // Right side
+     light.lineTo(R * lHalfTip, -R * lTip);
+
+     // Small flat tip
+     light.lineTo(-R * lHalfTip, -R * lTip);
+
+     // Left side
+     light.closePath();
+
+
+     this._chevCache[key] = {
+       frame,
+       light,
+       rTop,
+       rTip
+     };
+
+     return this._chevCache[key];
+   }
 
   _drawChevrons(ctx, R, time) {
     const edge = Math.max(1, R * 0.0045);
