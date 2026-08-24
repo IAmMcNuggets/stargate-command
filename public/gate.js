@@ -535,6 +535,24 @@ class Gate {
       ctx.lineTo(Math.cos(tick) * aR * 0.61, Math.sin(tick) * aR * 0.61);
       ctx.stroke();
       ctx.restore();
+
+      // Soft glowing diagnostic dot in the center.
+      const blink = (Math.sin(time * Math.PI * 2) + 1) * 0.5;
+      const radius = R * 0.036;
+
+      ctx.save();
+
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      gradient.addColorStop(0, `rgba(79, 195, 247, ${0.25 + blink * 0.65})`);
+      gradient.addColorStop(0.35, `rgba(79, 195, 247, ${0.15 + blink * 0.4})`);
+      gradient.addColorStop(1, 'rgba(79, 195, 247, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     if (this.horizon <= 0.001) {
