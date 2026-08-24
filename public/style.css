@@ -264,7 +264,11 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
 .log {
   flex: 1;
   min-height: 48px;
-  overflow: hidden;
+  /* Scrolls rather than clips, so the entries pushed off the top are still
+     reachable. column-reverse means the resting scroll position is the
+     newest entry, which is where you want to be. */
+  overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--cyan-dim) transparent;
   display: flex;
   flex-direction: column-reverse;
   gap: 1px;
@@ -272,7 +276,12 @@ h2 b { color: var(--cyan-hot); font-weight: 600; }
   line-height: 1.45;
   color: var(--cyan-dim);
 }
-.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* flex:0 0 auto for the same reason .results li has it: a flex child will
+   otherwise shrink below its own line height once the container is full,
+   and the text keeps its line box and spills over the row below. */
+.log div { flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log::-webkit-scrollbar { width: 5px; }
+.log::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
 .log .t   { opacity: .5; }
 .log .hi  { color: var(--cyan-hot); }
 .log .lock{ color: var(--lock); }
