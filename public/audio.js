@@ -17,6 +17,7 @@
 
 const SFX = {
   chevronLock: 'sfx/chevron-lock.mp3',
+  chevronEncoded: 'sfx/chevron-encoded.mp3',
   dhdPress: 'sfx/dhd-press.mp3',
   ringSpin: 'sfx/ring-spin.mp3',
   wormholeOpen: 'sfx/wormhole-open.mp3',
@@ -190,6 +191,10 @@ class GateAudio {
     o.connect(g).connect(this.master);
     o.start(t);
     o.stop(t + 0.06);
+  }
+
+  chevronEncoded() {
+    if (this._play('chevronEncoded', 0.85)) return;
   }
 
   /** The heavy mechanical clunk of a chevron locking. */

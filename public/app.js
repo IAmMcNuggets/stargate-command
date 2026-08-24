@@ -797,6 +797,8 @@ async function dialAddress(app, address, forceFull) {
         log('CHEVRON ' + NUMBER_WORD[chevron] + ' ENCODED · ' + GLYPH_NAMES[glyph]);
       }
       lightAddressCell(i);
+      sfx.chevronEncoded();
+
       if (speed.gap) await sleep(speed.gap);
       // Shrink it into its destination box. Deliberately not awaited: it
       // flies while the ring is already turning for the next symbol.
