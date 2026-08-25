@@ -12,7 +12,7 @@ It is slower than clicking an icon. That is the point.
 
 ## Download
 
-Both builds are on the [releases page](../../releases/latest).
+All three builds are on the [releases page](../../releases/latest).
 
 **Windows:** run the installer. Windows 10 or 11, 64-bit, nothing else to
 install.
@@ -27,8 +27,8 @@ chmod +x Stargate-Command-*.AppImage
 ./Stargate-Command-*.AppImage
 ```
 
-Neither desktop build is code-signed, and the two of them complain about it
-differently.
+The Windows and macOS builds are not code-signed, and the two of them
+complain about it differently.
 
 Windows shows a blue "Windows protected your PC" box: click **More info**,
 then **Run anyway**.
@@ -76,6 +76,15 @@ drawn by hand, so the symbols on the ring are the actual constellations.
 **The chevrons light in the right order.** They are not evenly spaced: 1, 2, 3
 down the right, 4, 5, 6 back up the left, 7 at the top. Each symbol spins to
 top dead center to be grabbed, exactly as on screen.
+
+**The top chevron moves.** It is the only one on the gate that does, and it is
+built here as the three separate pieces it is on the prop. The wing across the
+top is bolted to the ring and stays put. The V below it drops inward to take
+the symbol. A lit block slides outward along a channel cut into that V, so the
+two pull apart as it engages and the chevron reads as coming open rather than
+stretching. The distances and timings came off screen footage frame by frame.
+
+![The top chevron locking a symbol](docs/screenshot-chevron.jpg)
 
 **You can dial by hand.** The row of symbols along the bottom is a DHD: 38
 keys, one per constellation, with DIAL in the middle. Press six of them and
@@ -158,7 +167,16 @@ affiliated with or endorsed by the rights holders.
 **The MIT license covers the code only.** It is not mine to place any license
 on the Stargate material in `assets/` and `public/sfx/`, and it does not.
 
-Linux support was contributed by [@jkoehler11](https://github.com/jkoehler11).
+Three people have contributed to this:
+
+- [@jkoehler11](https://github.com/jkoehler11) ported it to Linux, and set up
+  the CI that builds every release.
+- [@Shogoki](https://github.com/Shogoki) ported it to macOS, which meant
+  writing a binary plist reader by hand because that is how Xcode saves
+  Info.plist.
+- [@St0rmy95](https://github.com/St0rmy95) gave the chevrons their shape and
+  their slats, added the failed-dial sound, synced the iris to its own sound
+  effect, and put the diagnostic dot back in the middle of the gate.
 
 The sounds are optional as far as the program is concerned: delete
 `public/sfx/` and it falls back to the synthesized audio it shipped with
