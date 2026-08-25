@@ -858,7 +858,7 @@ async function dialAddress(app, address, forceFull) {
     if (blocked) {
       log('IRIS CLOSED — TRANSIT BLOCKED', 'err');
       banner('IRIS CLOSED · TRANSIT BLOCKED', 'err');
-      sfx.error();
+      sfx.error(false);
     } else if (launchError) {
       // The program did not start. Collapse the gate rather than sitting
       // there claiming an established wormhole for a minute.
