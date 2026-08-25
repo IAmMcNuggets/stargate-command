@@ -483,7 +483,8 @@ class GateAudio {
   /** Failed dial. */
   error(playsound = true) {
     if (!this._ok()) return;
-    if (playsound && this._play('dialFail', 0.9)) return;
+    if (!playsound) return;
+    if (this._play('dialFail', 0.9)) return;
     this._synthError();
   }
 
