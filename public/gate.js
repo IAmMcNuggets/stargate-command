@@ -30,6 +30,27 @@ const CHEVRON_DEG = [40, 80, 120, 240, 280, 320, 0, 160, 200];
  * three quarters of the outside radius.
  */
 const R_APERTURE = 0.74;
+// How far the top V drops as it takes a symbol, as a fraction of the gate
+// radius. Sized so the point of the V finishes halfway down a constellation:
+// it rests at 0.855 and the symbol track runs R_RING_IN to R_RING_OUT, so
+// half way is 0.8125 and the travel is the difference.
+//
+// The prop only moves about 0.013. This is well past that on purpose, since
+// at the size the gate renders here the true figure is a few pixels and does
+// not register.
+const TOP_DROP = 0.0425;
+
+// How far the lit element rides outward while the V drops inward, as a
+// fraction of the gate radius. The two travel in opposite directions at the
+// same time, which is what makes the chevron look like it is coming apart as
+// it takes the symbol rather than merely stretching.
+//
+// It has to stay captive in its channel: the block slides, it does not come
+// off. Rest to full travel the block clears the V by TOP_DROP + TOP_RISE, and
+// the channel runs from the block down to the point of the V, so that sum has
+// to stay under the channel depth or the block leaves the part it slides in.
+const TOP_RISE = 0.02;
+
 const R_RING_IN = 0.74;
 const R_RING_OUT = 0.885;
 const R_DECO_OUT = 0.958;
@@ -104,8 +125,11 @@ class Gate {
     this.glyphFlash = 0;
 
     // The top chevron grabs every symbol, separately from the numbered
-    // chevrons that latch and stay lit.
+    // chevrons that latch and stay lit. topDrop is the V dropping inward to
+    // take the symbol; topGrab is the light, driven off the same phases so
+    // the two stay welded together.
     this.topGrab = 0;
+    this.topDrop = 0;
 
     // Trinium iris: 0 fully open, 1 fully closed. Sits in front of the
     // event horizon, exactly as it does on the real gate.
@@ -231,6 +255,7 @@ class Gate {
     this.slots = new Array(this.slotCount).fill(null);
     this.flight = null;
     this.topGrab = 0;
+    this.topDrop = 0;
     this.horizon = 0;
     this.kawooshT = -1;
     this.spinning = false;
@@ -349,17 +374,51 @@ class Gate {
    * alongside the numbered chevron latching rather than before it, so the
    * grab reads without lengthening the dial.
    */
+  /**
+   * The V dropping inward as it takes the symbol.
+   *
+   * The wing across the top does not move; only the V below it does. Tracked
+   * off the prop by correlating the slat pattern frame to frame, which works
+   * whether the slats are lit or dark: it drops inward over about a fifth
+   * of a second, sits there for half a second, then returns. See TOP_DROP for
+   * the distance, which is pushed past the measured one on purpose.
+   *
+   * It travels one way only. The prop does carry on a few pixels past its
+   * resting place on the way back, but reproducing that read as a bounce
+   * rather than as weight, so the return stops at rest.
+   *
+   * Positive is inward, toward the middle of the gate.
+   */
+  async _dropTop(duration) {
+    await this._tween(duration * 0.28, (t) => (this.topDrop = t), easeOutCubic);
+    this.topDrop = 1;
+    await this._tween(duration * 0.32, () => {});
+    await this._tween(duration * 0.4, (t) => (this.topDrop = 1 - t), easeInOutCubic);
+    this.topDrop = 0;
+  }
+
+
   async flashTop(duration) {
     this.shake = Math.min(1, this.shake + 0.45);
     this.glyphFlash = 1;
-    await this._tween(duration * 0.35, (t) => (this.topGrab = t), easeOutBack);
+    // Phase-matched to _dropTop rather than run on its own clock. It used to
+    // peak at 0.35 and be fading again while the V was still down, which is
+    // what made the light look like it belonged to something else.
+    const moving = this._dropTop(duration);
+    await this._tween(duration * 0.28, (t) => (this.topGrab = t), easeOutCubic);
     this.topGrab = 1;
-    await this._tween(duration * 0.65, (t) => (this.topGrab = 1 - t), easeOutCubic);
+    await this._tween(duration * 0.47, () => {});
+    await this._tween(duration * 0.25, (t) => (this.topGrab = 1 - t), easeOutCubic);
     this.topGrab = 0;
+    await moving;
   }
 
   /** Slam a chevron closed. */
   async lockChevron(chevronNumber, glyph, duration) {
+    // Seven is the top one and locks itself rather than being grabbed, so
+    // without this it would be the only symbol that engages without the
+    // housing moving.
+    const lifting = chevronNumber === 7 ? this._dropTop(duration) : null;
     const entry = { lit: 0, glyph, flash: 1 };
     this.chevrons.set(chevronNumber, entry);
     this.glyphFlash = 1;
@@ -374,6 +433,7 @@ class Gate {
     );
     entry.lit = 1;
     entry.flash = 0.35;
+    if (lifting) await lifting;
   }
 
   /** Drive the iris blades open or shut. */
@@ -1035,25 +1095,74 @@ class Gate {
     const halfOuter = 0.075;
     const halfShoulder = 0.015;
 
-    const frame = new Path2D();
-    frame.moveTo(-R * halfTop, -R * rTop);
+    // Two pieces, because on the top chevron they move independently: the
+    // wing across the top is bolted to the ring and never moves, and the V
+    // below it drops to take the symbol. Splitting them here means the draw
+    // does not have to know the geometry.
+    // The seam sits deep enough that the V is still covered at full travel:
+    // the wing has to overlap the V by more than TOP_DROP or the two come
+    // apart at the bottom of the drop.
+    const rSplit = rTop - (TOP_DROP + 0.0025);
+    const rOuterTop = rTop - 0.025;
+    // Half-width of the original single outline at any radius on the taper,
+    // so splitting it in two does not change the silhouette.
+    const taperAt = (r) =>
+      halfShoulder + ((r - rShoulder) / (rOuterTop - rShoulder)) * (halfOuter - halfShoulder);
+    const halfSplit = taperAt(rSplit);
+
+    const wing = new Path2D();
+    wing.moveTo(-R * halfTop, -R * rTop);
     // Curved top edge.
-    frame.quadraticCurveTo(0, -R * (rTop + 0.038), R * halfTop, -R * rTop);
-    // Outer angled section, shoulder, then the tip on the rim.
-    frame.lineTo(R * halfOuter, -R * (rTop - 0.025));
-    frame.lineTo(R * halfShoulder, -R * rShoulder);
-    frame.lineTo(0, -R * rTip);
-    frame.lineTo(-R * halfShoulder, -R * rShoulder);
-    frame.lineTo(-R * halfOuter, -R * (rTop - 0.025));
-    frame.closePath();
+    wing.quadraticCurveTo(0, -R * (rTop + 0.038), R * halfTop, -R * rTop);
+    wing.lineTo(R * halfOuter, -R * rOuterTop);
+    wing.lineTo(R * halfSplit, -R * rSplit);
+    wing.lineTo(-R * halfSplit, -R * rSplit);
+    wing.lineTo(-R * halfOuter, -R * rOuterTop);
+    wing.closePath();
+
+    // The V runs up behind the wing rather than stopping at it, so that as it
+    // drops it slides out from underneath instead of opening a hole. The tail
+    // stops just under the curved top edge, which is at its lowest directly
+    // above the tail, so nothing pokes out at rest.
+    const veeTop = rTop + 0.01;
+    const vee = new Path2D();
+    vee.moveTo(-R * halfOuter, -R * veeTop);
+    vee.lineTo(R * halfOuter, -R * veeTop);
+    vee.lineTo(R * halfSplit, -R * rSplit);
+    // Shoulder, then the tip on the rim.
+    vee.lineTo(R * halfShoulder, -R * rShoulder);
+    vee.lineTo(0, -R * rTip);
+    vee.lineTo(-R * halfShoulder, -R * rShoulder);
+    vee.lineTo(-R * halfSplit, -R * rSplit);
+    vee.closePath();
 
     // The illuminated element, seated inside the housing. Its top has to sit
     // at a smaller radius than the frame or the light protrudes past the
     // metal that is supposed to surround it.
-    const lTop = rTop - 0.012;
+    //
+    // It is seated deep enough to leave the top chevron room to travel: the
+    // element rides out as it engages, and if it starts flush it clears the
+    // housing immediately and reads as the part detaching rather than
+    // sliding. At full extension it should sit barely proud of the metal.
+    const lTop = rTop - 0.03;
     const lTip = rTip + 0.036;
     const lHalfTop = 0.052;
     const lHalfTip = 0.01;
+
+    // The channel the element slides in. Cut into the V, so it travels with
+    // the V and the element moves against it. At rest the element fills the
+    // mouth of it; as it rides out the rest of the channel is uncovered.
+    const chTop = lTop + 0.004;
+    const chTip = rTip + 0.005;
+    const chHalfTop = lHalfTop + 0.007;
+    const chHalfTip = lHalfTip + 0.007;
+
+    const channel = new Path2D();
+    channel.moveTo(-R * chHalfTop, -R * chTop);
+    channel.lineTo(R * chHalfTop, -R * chTop);
+    channel.lineTo(R * chHalfTip, -R * chTip);
+    channel.lineTo(-R * chHalfTip, -R * chTip);
+    channel.closePath();
 
     const light = new Path2D();
     light.moveTo(-R * lHalfTop, -R * lTop);
@@ -1062,7 +1171,37 @@ class Gate {
     light.lineTo(-R * lHalfTip, -R * lTip);
     light.closePath();
 
-    this._chevCache[key] = { frame, light, rTop, rTip };
+    // Slats down the inside of each arm. On the prop these light with the
+    // element and account for as much of the engaged look as the element
+    // itself does. They sit in the metal between the element and the outer
+    // edge, so both boundaries taper and each bar has to follow them.
+    const outerAt = taperAt;
+    const innerAt = (r) => lHalfTip + ((r - lTip) / (lTop - lTip)) * (lHalfTop - lHalfTip);
+
+    const slats = new Path2D();
+    const SLATS = 5;
+    const rFrom = 0.9;
+    const rSpan = 0.058;
+    const pitch = rSpan / SLATS;
+    const inset = 0.005;
+    for (let k = 0; k < SLATS; k++) {
+      const r0 = rFrom + k * pitch;
+      const r1 = r0 + pitch * 0.6;
+      const a0 = innerAt(r0) + inset;
+      const b0 = outerAt(r0) - inset;
+      const a1 = innerAt(r1) + inset;
+      const b1 = outerAt(r1) - inset;
+      if (b0 <= a0 || b1 <= a1) continue;
+      for (let side = -1; side <= 1; side += 2) {
+        slats.moveTo(side * R * a0, -R * r0);
+        slats.lineTo(side * R * b0, -R * r0);
+        slats.lineTo(side * R * b1, -R * r1);
+        slats.lineTo(side * R * a1, -R * r1);
+        slats.closePath();
+      }
+    }
+
+    this._chevCache[key] = { wing, vee, channel, light, slats, rTop, rTip };
     return this._chevCache[key];
   }
   _drawChevrons(ctx, R, time) {
@@ -1071,7 +1210,7 @@ class Gate {
     for (let i = 0; i < CHEVRON_DEG.length; i++) {
       const number = i + 1;
       const theta = (CHEVRON_DEG[i] * Math.PI) / 180;
-      const { frame, light } = this._chevronPath(R, number === 7);
+      const { wing, vee, channel, light, slats } = this._chevronPath(R, number === 7);
       const entry = this.chevrons.get(number);
       let lit = entry ? clamp(entry.lit, 0, 1) : 0;
       // Chevron 7 is at top dead center and doubles as the grabber.
@@ -1085,13 +1224,61 @@ class Gate {
       mg.addColorStop(0, PALETTE.chevronBody);
       mg.addColorStop(0.55, '#5d6b77');
       mg.addColorStop(1, PALETTE.chevronDark);
+
+      // Only the V travels, and only on the top chevron. Moving the whole
+      // bracket reads as the part coming loose from the ring.
+      ctx.save();
+      if (number === 7 && this.topDrop > 0.001) {
+        ctx.translate(0, R * TOP_DROP * this.topDrop);
+      }
+
       ctx.fillStyle = mg;
-      ctx.fill(frame);
+      ctx.fill(vee);
       ctx.strokeStyle = PALETTE.chevronEdge;
       ctx.lineWidth = edge;
-      ctx.stroke(frame);
+      ctx.stroke(vee);
 
-      // Illuminated element.
+      // The channel, sunk into the V.
+      ctx.fillStyle = 'rgba(4, 12, 20, 0.95)';
+      ctx.fill(channel);
+      ctx.strokeStyle = 'rgba(120, 140, 158, 0.35)';
+      ctx.lineWidth = edge;
+      ctx.stroke(channel);
+
+      // Arm slats, carried by the V.
+      ctx.fillStyle = 'rgba(10, 20, 30, 0.85)';
+      ctx.fill(slats);
+      if (lit > 0.001) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.shadowColor = PALETTE.chevronLit;
+        ctx.shadowBlur = R * 0.02;
+        ctx.fillStyle = PALETTE.chevronLitHot;
+        ctx.globalAlpha = lit * 0.85;
+        ctx.fill(slats);
+        ctx.restore();
+      }
+
+      ctx.restore(); // the V travel
+
+      // The wing across the top is bolted to the ring. It goes on over the V
+      // so the V slides out from under it rather than opening a gap.
+      ctx.fillStyle = mg;
+      ctx.fill(wing);
+      ctx.strokeStyle = PALETTE.chevronEdge;
+      ctx.lineWidth = edge;
+      ctx.stroke(wing);
+
+      // Illuminated element. It rides outward as the V drops inward, so the
+      // two pull apart and the chevron reads as coming open rather than as
+      // stretching. Driven off topDrop rather than a tween of its own: that is
+      // what keeps it locked to the movement instead of running on its own
+      // clock. Drawn after the wing so it passes in front of the metal.
+      ctx.save();
+      if (number === 7 && this.topDrop > 0.001) {
+        ctx.translate(0, -R * TOP_RISE * this.topDrop);
+      }
+
       ctx.fillStyle = 'rgba(8, 24, 38, 0.9)';
       ctx.fill(light);
 
@@ -1115,6 +1302,7 @@ class Gate {
       ctx.strokeStyle = lit > 0.001 ? 'rgba(255, 214, 160, 0.9)' : 'rgba(150, 172, 190, 0.5)';
       ctx.lineWidth = edge;
       ctx.stroke(light);
+      ctx.restore(); // the element riding out
 
       ctx.restore();
 
