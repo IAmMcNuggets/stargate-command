@@ -1344,7 +1344,7 @@ function toggleDemoMode() {
   state.demoMode = !state.demoMode;
   el('btn-demo').textContent = 'DEMO: ' + (state.demoMode ? 'ON' : 'OFF');
   el('btn-demo').classList.toggle('engaged', state.demoMode);
-  log(state.demoMode ? 'DEMO MODE ON - NO WORMHOLE WILL BE ESTABLISHED' : 'DEMO MODE OFF - FULL GATE FUNCTIONALITY RESTORED', state.demoMode ? 'ok' : 'lock');
+  log(state.demoMode ? 'DEMO MODE ON - NO WORMHOLE WILL BE ESTABLISHED' : 'DEMO MODE OFF - FULL GATE FUNCTIONALITY RESTORED', state.demoMode ? 'lock' : 'ok');
 }
 
 function applyAudioLabel() {
