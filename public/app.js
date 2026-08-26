@@ -179,7 +179,9 @@ function banner(text, cls) {
   $banner.className = 'stage-banner show' + (cls ? ' ' + cls : '');
 }
 function clearBanner() {
-  $banner.className = 'stage-banner';
+  $banner.textContent = 'IDLE';
+  $banner.className = 'stage-banner show';
+  //$banner.className = 'stage-banner';
 }
 
 function setGateStatus(text, cls) {
