@@ -75,6 +75,7 @@ const state = {
   assign: null, // the destination whose address is being set, if any
   hotkey: null,
   capturingHotkey: false,
+  demoMode: false,
 };
 
 const gate = new Gate(el('gate'));
@@ -839,7 +840,7 @@ async function dialAddress(app, address, forceFull) {
 
     // The iris sits in front of the event horizon. Dialing still completes;
     // nothing is allowed through.
-    const blocked = state.irisClosed;
+    const blocked = state.irisClosed || state.demoMode;
     // Capture the failure rather than letting it reject unhandled — the
     // promise is created here but not awaited until the kawoosh finishes.
     let launchError = null;
@@ -855,7 +856,7 @@ async function dialAddress(app, address, forceFull) {
 
     await launching;
 
-    if (blocked) {
+    if (blocked && !state.demoMode) {
       log('IRIS CLOSED — TRANSIT BLOCKED', 'err');
       banner('IRIS CLOSED · TRANSIT BLOCKED', 'err');
       sfx.error(false);
@@ -1337,6 +1338,13 @@ function toggleIris() {
   log(state.irisClosed ? 'IRIS CLOSED — GATE SEALED' : 'IRIS OPEN', state.irisClosed ? 'lock' : 'ok');
 }
 
+function toggleDemoMode() {
+  state.demoMode = !state.demoMode;
+  el('btn-demo').textContent = 'DEMO: ' + (state.demoMode ? 'ON' : 'OFF');
+  el('btn-demo').classList.toggle('engaged', state.demoMode);
+  log(state.demoMode ? 'DEMO MODE ON - NO WORMHOLE WILL BE ESTABLISHED' : 'DEMO MODE OFF - FULL GATE FUNCTIONALITY RESTORED', state.demoMode ? 'ok' : 'lock');
+}
+
 function applyAudioLabel() {
   $btnAudio.textContent = 'AUDIO: ' + (state.audio ? 'ON' : 'OFF');
 }
@@ -1565,6 +1573,7 @@ el('btn-iris').addEventListener('click', toggleIris);
 el('btn-speed').addEventListener('click', cycleSpeed);
 el('btn-audio').addEventListener('click', toggleAudio);
 el('btn-rescan').addEventListener('click', () => !state.dialing && loadCatalog(true));
+el('btn-demo').addEventListener('click', toggleDemoMode);
 el('btn-quit').addEventListener('click', () => {
   log('DIALING COMPUTER OFFLINE', 'err');
   Promise.resolve(backend.quit()).catch(() => {});
