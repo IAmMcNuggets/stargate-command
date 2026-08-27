@@ -489,10 +489,18 @@ class Gate {
     this.centerGlyph = null;
   }
 
-  /** The kawoosh, then the settled event horizon. */
-  async openWormhole(duration) {
+  /**
+   * The kawoosh, then the settled event horizon.
+   *
+   * `lead` holds the eruption back so it lands on the sound rather than ahead
+   * of it. The caller passes it because it is the one that knows which sound
+   * is playing, and it must not be derived from `duration`: the dial speed
+   * changes, the length of the recording does not.
+   */
+  async openWormhole(duration, lead = 0) {
     this.shake = 1;
     this.kawooshT = 0;
+    if (lead > 0) await this._tween(lead, () => {});
     await this._tween(duration, (t) => {
       this.kawooshT = t;
       this.horizon = clamp((t - 0.3) / 0.45, 0, 1);

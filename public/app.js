@@ -58,6 +58,12 @@ const SPEEDS = {
     hold: 1800,
   },
 };
+// The recorded kawoosh takes about 0.9s to build before it erupts: measured
+// off wormhole-open.mp3, whose loudest point is at 0.96s. The vortex is held
+// back by this much so the two land together. It is a property of the sound,
+// not of the dial speed, so it is the same at every speed.
+const KAWOOSH_LEAD = 900;
+
 const SPEED_ORDER = ['INSTANT', 'NORMAL', 'SHOW'];
 
 const state = {
@@ -75,6 +81,7 @@ const state = {
   assign: null, // the destination whose address is being set, if any
   hotkey: null,
   capturingHotkey: false,
+  demoMode: false, // dial everything, launch nothing
 };
 
 const gate = new Gate(el('gate'));
@@ -178,7 +185,10 @@ function banner(text, cls) {
   $banner.className = 'stage-banner show' + (cls ? ' ' + cls : '');
 }
 function clearBanner() {
-  $banner.className = 'stage-banner';
+  // The computer in the show sits at IDLE between dials rather than going
+  // blank, so there is nothing to clear it to.
+  $banner.textContent = 'IDLE';
+  $banner.className = 'stage-banner show';
 }
 
 function setGateStatus(text, cls) {
@@ -699,7 +709,8 @@ async function shutWormhole(manual) {
   if (!wormholeOpen()) return;
   sfx.stopHum();
   sfx.wormholeClose();
-  await gate.closeWormhole(520);
+  // Paced to the shutdown sound, which runs 3.4s.
+  await gate.closeWormhole(2700);
   log('WORMHOLE DISENGAGED' + (manual ? ' — MANUAL SHUTDOWN' : ' — 38 MINUTE LIMIT'), 'ok');
   gate.reset();
   resetChevronList();
@@ -835,20 +846,26 @@ async function dialAddress(app, address, forceFull) {
     sfx.kawoosh(speed.kawoosh);
     gate.hideCenterGlyph(200);
 
-    // The iris sits in front of the event horizon. Dialing still completes;
-    // nothing is allowed through.
+    // Two different reasons nothing comes through, and only one of them is a
+    // failure: the iris is in the way, or demo mode is on and the whole thing
+    // is theatre. Dialing completes either way.
     const blocked = state.irisClosed;
+    const holding = blocked || state.demoMode;
     // Capture the failure rather than letting it reject unhandled — the
     // promise is created here but not awaited until the kawoosh finishes.
     let launchError = null;
-    const launching = blocked
+    const launching = holding
       ? Promise.resolve(null)
       : Promise.resolve(backend.launch(app.id)).catch((e) => {
           launchError = e;
           return null;
         });
 
-    await gate.openWormhole(speed.kawoosh);
+    // Only wait for the sound when the sound is the recorded one. The
+    // synthesized fallback erupts immediately and has nothing to wait for,
+    // and neither does silence.
+    const kawooshLead = sfx.hasSample('wormholeOpen') ? KAWOOSH_LEAD : 0;
+    await gate.openWormhole(speed.kawoosh, kawooshLead);
     sfx.startHum();
 
     await launching;
@@ -856,7 +873,8 @@ async function dialAddress(app, address, forceFull) {
     if (blocked) {
       log('IRIS CLOSED — TRANSIT BLOCKED', 'err');
       banner('IRIS CLOSED · TRANSIT BLOCKED', 'err');
-      sfx.error();
+      // No failure sound here. The wormhole established exactly as it should;
+      // the iris simply did its job.
     } else if (launchError) {
       // The program did not start. Collapse the gate rather than sitting
       // there claiming an established wormhole for a minute.
@@ -1335,6 +1353,17 @@ function toggleIris() {
   log(state.irisClosed ? 'IRIS CLOSED — GATE SEALED' : 'IRIS OPEN', state.irisClosed ? 'lock' : 'ok');
 }
 
+function toggleDemoMode() {
+  state.demoMode = !state.demoMode;
+  const b = el('btn-demo');
+  b.textContent = 'DEMO: ' + (state.demoMode ? 'ON' : 'OFF');
+  b.classList.toggle('engaged', state.demoMode);
+  log(
+    state.demoMode ? 'DEMO MODE ON — NOTHING WILL BE LAUNCHED' : 'DEMO MODE OFF — GATE LIVE',
+    state.demoMode ? 'lock' : 'ok'
+  );
+}
+
 function applyAudioLabel() {
   $btnAudio.textContent = 'AUDIO: ' + (state.audio ? 'ON' : 'OFF');
 }
@@ -1562,6 +1591,7 @@ el('add-overlay').addEventListener('mousedown', (e) => {
 el('btn-iris').addEventListener('click', toggleIris);
 el('btn-speed').addEventListener('click', cycleSpeed);
 el('btn-audio').addEventListener('click', toggleAudio);
+el('btn-demo').addEventListener('click', toggleDemoMode);
 el('btn-rescan').addEventListener('click', () => !state.dialing && loadCatalog(true));
 el('btn-quit').addEventListener('click', () => {
   log('DIALING COMPUTER OFFLINE', 'err');
