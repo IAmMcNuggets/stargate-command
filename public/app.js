@@ -813,7 +813,7 @@ async function dialAddress(app, address, forceFull) {
     // Nothing at this address. Every symbol encoded, but there is nothing on
     // the far side to lock onto, so the gate never establishes and no vortex
     // forms. Only a real destination gets the kawoosh.
-    if (app.missing) {
+    if (app.missing && !state.demoMode) {
       log('NO SUCH ADDRESS', 'err');
       banner('NO SUCH ADDRESS', 'err');
       setGateStatus('FAILED', 'hot');
