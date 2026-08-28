@@ -818,8 +818,12 @@ async function dialAddress(app, address, forceFull) {
 
     // Nothing at this address. Every symbol encoded, but there is nothing on
     // the far side to lock onto, so the gate never establishes and no vortex
-    // forms. Only a real destination gets the kawoosh.
-    if (app.missing) {
+    // forms. A wormhole that opens and immediately dies reads as a bug however
+    // deliberate it is.
+    //
+    // Demo mode is the exception, and the point of it: nothing is real there,
+    // so any address you care to invent gets a vortex and holds it.
+    if (app.missing && !state.demoMode) {
       log('NO SUCH ADDRESS', 'err');
       banner('NO SUCH ADDRESS', 'err');
       setGateStatus('FAILED', 'hot');
@@ -1130,8 +1134,9 @@ async function dialComposed() {
   const address = state.compose.concat([0]);
   const found = addressIndex.get(addressKey(address));
 
-  // Nothing at this address still dials. The gate commits to the sequence and
-  // fails at the kawoosh, which is both truer to the show and more fun.
+  // Nothing at this address still dials: the gate commits to the whole
+  // sequence and only then reports there is nothing there. It fails before the
+  // vortex rather than at the kawoosh, which an earlier version did.
   const target = found || { id: null, key: '', name: 'UNKNOWN ADDRESS', kind: 'unknown', missing: true };
 
   state.address = address;
